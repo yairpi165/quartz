@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.yair.projectboards</string>
+  <key>WorkingDirectory</key><string>/Users/yairpinchasi/Documents/GitHub/project-boards-site</string>
+  <key>ProgramArguments</key><array>
+    <string>/bin/zsh</string><string>-lc</string><string>npx quartz build --serve --watch --port 8484</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/Users/yairpinchasi/Library/Logs/projectboards.log</string>
+  <key>StandardErrorPath</key><string>/Users/yairpinchasi/Library/Logs/projectboards.log</string>
+</dict></plist>
