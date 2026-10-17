@@ -10,19 +10,23 @@ Built on Quartz v5 (upstream remote: `upstream`, branch `v5`) with the `@quartz-
 
 ## Service
 
-launchd agent `com.yair.projectboards` runs `npx quartz build --serve --watch --port 8484`.
-The plist lives at `~/Library/LaunchAgents/com.yair.projectboards.plist`; a copy is in `launchd/`.
+launchd agent `com.yair.project-boards-website` runs `bin/project-boards-website` (`npx quartz build --serve --watch --port 8484`).
+
+- Plist: `~/Library/LaunchAgents/com.yair.project-boards-website.plist` (copy in `launchd/`).
+- Wrapper: launchd runs the installed copy `~/.local/bin/project-boards-website`, not the repo file. macOS privacy (TCC) blocks shells started by launchd from reading `~/Documents`; the plist `WorkingDirectory` makes the repo the cwd, and node itself can read it. After editing `bin/project-boards-website`, copy it again.
+- Logs: `~/Library/Logs/project-boards-website.log`.
+
+Restart (e.g. after editing `quartz.config.yaml`):
 
 ```bash
-launchctl kickstart -k gui/$(id -u)/com.yair.projectboards
+launchctl kickstart -k gui/$(id -u)/com.yair.project-boards-website
 ```
 
-Restart (e.g. after editing `quartz.config.yaml`). Logs: `~/Library/Logs/projectboards.log`.
-
-Install or reinstall the agent:
+Install or reinstall:
 
 ```bash
-cp launchd/com.yair.projectboards.plist ~/Library/LaunchAgents/
-launchctl bootout gui/$(id -u)/com.yair.projectboards 2>/dev/null
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.yair.projectboards.plist
+cp bin/project-boards-website ~/.local/bin/ && chmod +x ~/.local/bin/project-boards-website
+cp launchd/com.yair.project-boards-website.plist ~/Library/LaunchAgents/
+launchctl bootout gui/$(id -u)/com.yair.project-boards-website 2>/dev/null
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.yair.project-boards-website.plist
 ```

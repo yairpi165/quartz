@@ -1,0 +1,7 @@
+#!/bin/zsh
+# Serves the ClaudeVault project boards on http://localhost:8484 (launchd: com.yair.project-boards-website).
+# Installed copy: ~/.local/bin/project-boards-website. macOS privacy (TCC) blocks shells started by launchd
+# from reading ~/Documents, so the copy lives outside it and the plist's WorkingDirectory sets the repo as cwd.
+set -eu
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+exec npx quartz build --serve --watch --port 8484
