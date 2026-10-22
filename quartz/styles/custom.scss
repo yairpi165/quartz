@@ -1,23 +1,26 @@
 @use "./variables.scss" as *;
 
-// Board-first layout: one narrow sidebar (title, search, dark mode, board list) on the visual LEFT,
-// no right sidebar, and the center (the kanban) takes all remaining width. The site is RTL (he-IL),
-// where the first grid column is the rightmost one, so the sidebar sits in the last column.
+// Board-first layout: one narrow sidebar (title, search, dark mode, board list) on the visual RIGHT,
+// no second sidebar, and the center (the kanban) takes all remaining width. The site is RTL (he-IL),
+// where the first grid column is the rightmost one, so the sidebar sits in the first column.
+// The header button (SidebarToggle) sets html[data-boards-sidebar="collapsed"]: the sidebar is hidden
+// and the board takes the full width.
 $boardsSidebarWidth: 220px;
 
 .page > #quartz-body {
   @media all and not ($mobile) {
-    grid-template-columns: auto $boardsSidebarWidth;
+    grid-template-columns: $boardsSidebarWidth auto;
     grid-template-rows: auto auto auto;
     grid-template-areas:
-      "grid-header grid-sidebar-left"
-      "grid-center grid-sidebar-left"
-      "grid-footer grid-sidebar-left";
+      "grid-sidebar-left grid-header"
+      "grid-sidebar-left grid-center"
+      "grid-sidebar-left grid-footer";
   }
 
   & .sidebar.left {
     @media all and not ($mobile) {
-      padding: 2rem 1rem;
+      // room at the top for the fixed show/hide button
+      padding: 3.5rem 1rem 2rem 1rem;
     }
   }
 
@@ -32,8 +35,27 @@ $boardsSidebarWidth: 220px;
     margin: 0;
     padding: 0 1.5rem;
     @media all and not ($mobile) {
-      grid-column: 1;
+      grid-column: 2;
       grid-row: 1 / 3;
+    }
+  }
+}
+
+:root[data-boards-sidebar="collapsed"] .page > #quartz-body {
+  & .sidebar.left {
+    display: none;
+  }
+  @media all and not ($mobile) {
+    grid-template-columns: auto;
+    grid-template-areas:
+      "grid-header"
+      "grid-center"
+      "grid-footer";
+
+    & .center {
+      grid-column: 1;
+      // keep the board clear of the fixed button
+      padding-inline-start: 3.5rem;
     }
   }
 }
