@@ -24,6 +24,12 @@ $boardsSidebarWidth: 220px;
     }
   }
 
+  // mobile: a gutter on the button's side for the whole page, so the fixed button never covers the
+  // title, view tabs or cards, also while scrolling
+  @media all and ($mobile) {
+    padding-inline-start: 3.25rem;
+  }
+
   & .sidebar.right {
     display: none;
   }
