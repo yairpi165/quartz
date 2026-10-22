@@ -30,10 +30,26 @@ export function getStaticResourcesFromPlugins(ctx: BuildCtx) {
     staticResources.js.push({
       loadTime: "afterDOMReady",
       contentType: "inline",
+      // One socket per page load (SPA navigation re-runs this script). Reconnect after the socket
+      // drops (server restart, Mac sleep, suspended tab) and reload then, since rebuilds may have been missed.
       script: `
-        const socket = new WebSocket('${wsUrl}')
-        // reload(true) ensures resources like images and scripts are fetched again in firefox
-        socket.addEventListener('message', () => document.location.reload(true))
+        if (!window.__quartzLiveReload) {
+          window.__quartzLiveReload = true
+          let dropped = false
+          const connect = () => {
+            const socket = new WebSocket('${wsUrl}')
+            // reload(true) ensures resources like images and scripts are fetched again in firefox
+            socket.addEventListener('message', () => document.location.reload(true))
+            socket.addEventListener('open', () => {
+              if (dropped) document.location.reload(true)
+            })
+            socket.addEventListener('close', () => {
+              dropped = true
+              setTimeout(connect, 2000)
+            })
+          }
+          connect()
+        }
       `,
     })
   }

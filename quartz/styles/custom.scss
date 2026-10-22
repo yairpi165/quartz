@@ -1,3 +1,33 @@
 @use "./variables.scss" as *;
 
-// put your custom CSS here!
+// Board-first layout: one narrow sidebar (title, search, dark mode, board list) on the visual LEFT,
+// no right sidebar, and the center (the kanban) takes all remaining width. The site is RTL (he-IL),
+// where the first grid column is the rightmost one, so the sidebar sits in the last column.
+$boardsSidebarWidth: 220px;
+
+.page > #quartz-body {
+  @media all and not ($mobile) {
+    grid-template-columns: auto $boardsSidebarWidth;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "grid-header grid-sidebar-left"
+      "grid-center grid-sidebar-left"
+      "grid-footer grid-sidebar-left";
+  }
+
+  & .sidebar.left {
+    @media all and not ($mobile) {
+      padding: 2rem 1rem;
+    }
+  }
+
+  & .sidebar.right {
+    display: none;
+  }
+
+  & .center {
+    max-width: none;
+    width: auto;
+    min-width: 0;
+  }
+}

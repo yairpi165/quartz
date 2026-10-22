@@ -47,6 +47,7 @@ type BuildData = {
   contentMap: ContentMap
   changesSinceLastBuild: Record<FilePath, ChangeEvent["type"]>
   lastBuildMs: number
+  consecutiveFailures: number
 }
 
 async function buildQuartz(argv: Argv, mut: Mutex, clientRefresh: () => void) {
@@ -155,6 +156,7 @@ async function startWatching(
 
     changesSinceLastBuild: {},
     lastBuildMs: 0,
+    consecutiveFailures: 0,
   }
 
   const watcher = chokidar.watch(".", {
@@ -354,9 +356,37 @@ async function rebuild(changes: ChangeEvent[], clientRefresh: () => void, buildD
     )
     console.log(styleText("green", `Done rebuilding in ${perf.timeSince()}`))
     changes.splice(0, numChangesInBuild)
+    clearChangesSinceLastBuild(changesSinceLastBuild)
+    buildData.consecutiveFailures = 0
     clientRefresh()
+  } catch (err) {
+    // Drop the failed batch so one bad change cannot fail every later rebuild (and silence the
+    // browser's live reload) forever; the file is rebuilt again on its next change.
+    const files = Object.keys(changesSinceLastBuild)
+    changes.splice(0, numChangesInBuild)
+    clearChangesSinceLastBuild(changesSinceLastBuild)
+    buildData.consecutiveFailures++
+    console.error(
+      styleText(
+        "red",
+        `Rebuild failed (${buildData.consecutiveFailures} in a row) for: ${files.join(", ")}`,
+      ),
+    )
+    console.error((err as Error)?.stack ?? err)
+    if (buildData.consecutiveFailures >= MAX_CONSECUTIVE_REBUILD_FAILURES) {
+      console.error(styleText("red", "Exiting so launchd restarts a clean server."))
+      process.exit(1)
+    }
   } finally {
     release()
+  }
+}
+
+const MAX_CONSECUTIVE_REBUILD_FAILURES = 3
+
+function clearChangesSinceLastBuild(changesSinceLastBuild: BuildData["changesSinceLastBuild"]) {
+  for (const fp of Object.keys(changesSinceLastBuild)) {
+    delete changesSinceLastBuild[fp as FilePath]
   }
 }
 

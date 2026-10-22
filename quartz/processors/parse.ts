@@ -15,6 +15,16 @@ import { trace } from "../util/trace"
 import { BuildCtx, WorkerSerializableBuildCtx } from "../util/ctx"
 import { styleText } from "util"
 
+// While serving (--watch), one bad note (e.g. broken frontmatter YAML) is skipped with a clear log line
+// instead of exiting: the site stays up and the note is rebuilt on its next change. Plain builds still fail.
+function failOrSkip(ctx: Pick<BuildCtx, "argv">, msg: string, err: Error) {
+  if (!ctx.argv.watch) {
+    trace(`\n${msg}`, err)
+    return
+  }
+  console.error(styleText("red", `Skipped note. ${msg}: ${err.message}`))
+}
+
 export type QuartzMdProcessor = Processor<MDRoot, MDRoot, MDRoot>
 export type QuartzHtmlProcessor = Processor<undefined, MDRoot, HTMLRoot>
 
@@ -112,7 +122,7 @@ export function createFileParser(ctx: BuildCtx, fps: FilePath[]) {
           console.log(`[markdown] ${fp} -> ${file.data.slug} (${perf.timeSince()})`)
         }
       } catch (err) {
-        trace(`\nFailed to process markdown \`${fp}\``, err as Error)
+        failOrSkip(ctx, `Failed to process markdown \`${fp}\``, err as Error)
       }
     }
 
@@ -134,7 +144,7 @@ export function createMarkdownParser(ctx: BuildCtx, mdContent: MarkdownContent[]
           console.log(`[html] ${file.data.slug} (${perf.timeSince()})`)
         }
       } catch (err) {
-        trace(`\nFailed to process html \`${file.data.filePath}\``, err as Error)
+        failOrSkip(ctx, `Failed to process html \`${file.data.filePath}\``, err as Error)
       }
     }
 

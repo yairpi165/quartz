@@ -8,13 +8,25 @@ Built on Quartz v5 (upstream remote: `upstream`, branch `v5`) with the `@quartz-
 - `quartz.config.yaml` `ignorePatterns` excludes everything except boards: Sessions, Daily, Memory, Topics, `_system`, `_raw`, Home, CLAUDE.md, area hubs (`Projects/*/*.md`) and each area's Decisions, Knowledge and Docs.
 - Analytics are off; footer links removed.
 
+## Layout
+
+Board first. One narrow sidebar on the visual left (the site is RTL, so it is Quartz's `left` slot moved to the last grid column in `quartz/styles/custom.scss`): page title, search, dark mode and the board list (`quartz/components/BoardsNav.tsx`: one link per `type: board` note, the current board marked). No graph, table of contents, backlinks, explorer, breadcrumbs or reader mode (`enabled: false` in `quartz.config.yaml`). The center takes all remaining width. `quartz.ts` adds the board list to every page type's sidebar and swaps in a `PageTypeDispatcher` built from that layout (the YAML loader builds its own otherwise). The home page is the vault root `index.md` (written by claude-vault `board.write_index`): a list of board links, each board on its own page.
+
+## Auto refresh
+
+The server watches the vault (`content` symlink) and rebuilds the changed notes in about a second; every open page then reloads itself over the WebSocket on port 3001. Local fixes on top of upstream Quartz:
+
+- `quartz/plugins/index.ts`: the page reconnects every 2 s after the socket drops (service restart, Mac sleep, suspended tab) and reloads once it is back.
+- `quartz/build.ts`: the pending-change set is cleared after each rebuild (upstream never cleared it). A failed rebuild is logged with its files (`Rebuild failed (N in a row) for: …`) and dropped, so it cannot block every later rebuild and the browser reload; three failures in a row exit the process and launchd restarts it clean.
+- `quartz/processors/parse.ts`: while serving, a note that fails to parse (e.g. bad frontmatter YAML) is skipped with ``Skipped note. Failed to process markdown `content/…` `` in the log instead of exiting; the site stays up and the note comes back on its next good save. `vault board check` names the same note. Plain `quartz build` still fails on it.
+
 ## Service
 
 launchd agent `com.yair.project-boards-website` runs `bin/project-boards-website` (`npx quartz build --serve --watch --port 8484`).
 
 - Plist: `~/Library/LaunchAgents/com.yair.project-boards-website.plist` (copy in `launchd/`).
 - Wrapper: launchd runs the installed copy `~/.local/bin/project-boards-website`, not the repo file. macOS privacy (TCC) blocks shells started by launchd from reading `~/Documents`; the plist `WorkingDirectory` makes the repo the cwd, and node itself can read it. After editing `bin/project-boards-website`, copy it again.
-- Logs: `~/Library/Logs/project-boards-website.log`.
+- Logs: `~/Library/Logs/project-boards-website.log`. launchd opens it once at start: if it is deleted, the process keeps writing to the unlinked file and nothing is visible until the next restart (`launchctl kickstart -k`, below) recreates it.
 
 Restart (e.g. after editing `quartz.config.yaml`):
 
