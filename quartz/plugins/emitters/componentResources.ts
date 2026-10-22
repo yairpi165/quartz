@@ -493,10 +493,13 @@ export const ComponentResources: QuartzEmitterPlugin = () => {
       const prescriptSlug = prescriptHash ? `prescript-${prescriptHash}` : "prescript"
       const postscriptSlug = postscriptHash ? `postscript-${postscriptHash}` : "postscript"
 
+      // Serve mode keeps fixed filenames; a content-hash query string still gives each build's
+      // CSS/JS a new URL, so a page reloaded after a style change never reuses a cached stylesheet.
+      const version = (content: string) => (useHashing ? "" : `?v=${hashContent(content)}`)
       ctx.hashedResourceNames = {
-        "index.css": `${cssSlug}.css`,
-        "prescript.js": `${prescriptSlug}.js`,
-        "postscript.js": `${postscriptSlug}.js`,
+        "index.css": `${cssSlug}.css${version(cssContent)}`,
+        "prescript.js": `${prescriptSlug}.js${version(prescript)}`,
+        "postscript.js": `${postscriptSlug}.js${version(postscript)}`,
       }
 
       yield write({
