@@ -2,15 +2,16 @@ import { QuartzComponentConstructor, QuartzComponentProps } from "./types"
 import { FullSlug, resolveRelative } from "../util/path"
 import { classNames } from "../util/lang"
 
-// Sidebar list of the project boards: one link per board note (`type: board`, Projects/<Area>/Tasks/),
-// labelled with its area. The board of the current page (the board itself or one of its tasks) is marked.
+// Sidebar list of the project boards: one link per board (`type: board` note in Projects/<Area>/Tasks/),
+// labelled with its area, to the board's `.base` page: that page opens on the kanban and is re-emitted on
+// every task change (the board note only embeds it and is not). The board of the current page is marked.
 function BoardsNav({ fileData, allFiles, displayClass }: QuartzComponentProps) {
   const boards = allFiles
     .filter(
       (f) => f.frontmatter?.type === "board" && f.slug && f.relativePath?.startsWith("Projects/"),
     )
     .map((f) => ({
-      slug: f.slug as FullSlug,
+      slug: (f.slug + ".base") as FullSlug,
       folder: f.slug!.slice(0, f.slug!.lastIndexOf("/") + 1),
       area: f.relativePath!.split("/")[1],
     }))
