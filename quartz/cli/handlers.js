@@ -475,6 +475,12 @@ export async function handleBuild(argv) {
           public: argv.output,
           directoryListing: false,
           headers: [
+            // always revalidate: without it browsers cache the CSS/JS heuristically and a
+            // live reload after a layout change can show the old styles
+            {
+              source: "**",
+              headers: [{ key: "Cache-Control", value: "no-cache" }],
+            },
             {
               source: "**/*.*",
               headers: [{ key: "Content-Disposition", value: "inline" }],
