@@ -22,6 +22,7 @@ import { getStaticResourcesFromPlugins } from "./plugins"
 import { randomIdNonSecure } from "./util/random"
 import { ChangeEvent } from "./plugins/types"
 import { minimatch } from "minimatch"
+import { Reconciler } from "./util/reconcile"
 
 function reportSlugCollisions(content: ProcessedContent[]): void {
   const collisions = detectSlugCollisions(content)
@@ -107,6 +108,8 @@ async function buildQuartz(argv: Argv, mut: Mutex, clientRefresh: () => void) {
   }
 }
 
+const RECONCILE_INTERVAL_MS = 3000
+
 // setup watcher for rebuilds
 async function startWatching(
   ctx: BuildCtx,
@@ -177,27 +180,54 @@ async function startWatching(
       })
     }, 100)
   }
+  // Safety net: file watchers can silently lose a file (seen after ~2 days of uptime, CV-12). A
+  // cheap periodic stat scan reports whatever the watcher missed and logs a warning, which is the
+  // evidence of a watcher failure.
+  const reconciler = new Reconciler({
+    root: argv.directory,
+    ignored: (rel) => buildData.ignored(rel),
+    onMiss: ({ path: fp, type }) => {
+      console.warn(
+        styleText("yellow", `[watch] WATCHER MISSED ${type} ${fp}: caught by the reconcile scan`),
+      )
+      changes.push({ path: fp as FilePath, type })
+      scheduleRebuild()
+    },
+  })
+  // Test hook: simulates a watcher that lost every file, to prove the scan alone keeps the site fresh.
+  const dropWatcherEvents = process.env.QUARTZ_DROP_WATCHER_EVENTS === "1"
+  const onWatcherEvent = (type: ChangeEvent["type"], raw: string) => {
+    if (dropWatcherEvents) return
+    const fp = toPosixPath(raw)
+    if (buildData.ignored(fp)) return
+    if (ctx.argv.verbose) console.log(`[watch] ${type} ${fp} via chokidar`)
+    reconciler.noteWatcherEvent(fp)
+    changes.push({ path: fp as FilePath, type })
+    scheduleRebuild()
+  }
   watcher
-    .on("add", (fp) => {
-      fp = toPosixPath(fp)
-      if (buildData.ignored(fp)) return
-      changes.push({ path: fp as FilePath, type: "add" })
-      scheduleRebuild()
-    })
-    .on("change", (fp) => {
-      fp = toPosixPath(fp)
-      if (buildData.ignored(fp)) return
-      changes.push({ path: fp as FilePath, type: "change" })
-      scheduleRebuild()
-    })
-    .on("unlink", (fp) => {
-      fp = toPosixPath(fp)
-      if (buildData.ignored(fp)) return
-      changes.push({ path: fp as FilePath, type: "delete" })
-      scheduleRebuild()
-    })
+    .on("add", (fp) => onWatcherEvent("add", fp))
+    .on("change", (fp) => onWatcherEvent("change", fp))
+    .on("unlink", (fp) => onWatcherEvent("delete", fp))
+
+  let scanning = false
+  const runScan = async () => {
+    if (scanning) return
+    scanning = true
+    try {
+      await reconciler.scan()
+    } catch (err) {
+      console.error(styleText("red", "Reconcile scan failed:"), (err as Error)?.message ?? err)
+    } finally {
+      scanning = false
+    }
+  }
+  void runScan()
+  const scanTimer = setInterval(runScan, RECONCILE_INTERVAL_MS)
+  scanTimer.unref()
 
   return async () => {
+    clearInterval(scanTimer)
     await watcher.close()
   }
 }
