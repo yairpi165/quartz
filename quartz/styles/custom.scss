@@ -92,7 +92,7 @@ $boardsSidebarWidth: 220px;
 // every column header (name + count) is pinned and only the cards scroll. Below the mobile breakpoint
 // none of this applies: the page scrolls as before and the board scrolls sideways.
 @media all and not ($mobile) {
-  body:has(.bases-board) {
+  body:has(.bases-view.is-active .bases-board) {
     overflow: hidden;
 
     & .page {
