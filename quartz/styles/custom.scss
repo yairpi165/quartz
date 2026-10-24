@@ -86,3 +86,70 @@ $boardsSidebarWidth: 220px;
 .bases-board-card {
   overflow-wrap: anywhere;
 }
+
+// Kanban fills the window and each column scrolls on its own (CV-13): on desktop a page that shows a
+// board does not scroll; the title and view tabs stay on top, the board takes the rest of the height,
+// every column header (name + count) is pinned and only the cards scroll. Below the mobile breakpoint
+// none of this applies: the page scrolls as before and the board scrolls sideways.
+@media all and not ($mobile) {
+  body:has(.bases-board) {
+    overflow: hidden;
+
+    & .page {
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    & .page > #quartz-body {
+      height: 100%;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+
+      & .center {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+
+        & > hr,
+        & > .page-footer {
+          display: none;
+        }
+      }
+    }
+
+    & .bases-page,
+    & .bases-view-container,
+    & .bases-view.is-active,
+    & .bases-board-wrapper {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 0;
+      min-height: 0;
+    }
+
+    & .bases-board {
+      flex: 1 1 0;
+      min-height: 0;
+      align-items: stretch;
+      overflow-y: hidden;
+    }
+
+    & .bases-board-column {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    & .bases-board-column-header {
+      flex: none;
+    }
+
+    & .bases-board-column-body {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+    }
+  }
+}
