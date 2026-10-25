@@ -20,6 +20,20 @@ The server watches the vault (`content` symlink) and rebuilds the changed notes 
 - `quartz/build.ts`: the pending-change set is cleared after each rebuild (upstream never cleared it). A failed rebuild is logged with its files (`Rebuild failed (N in a row) for: …`) and dropped, so it cannot block every later rebuild and the browser reload; three failures in a row exit the process and launchd restarts it clean.
 - `quartz/processors/parse.ts`: while serving, a note that fails to parse (e.g. bad frontmatter YAML) is skipped with ``Skipped note. Failed to process markdown `content/…` `` in the log instead of exiting; the site stays up and the note comes back on its next good save. `vault board check` names the same note. Plain `quartz build` still fails on it.
 
+## QA popup (CV-14)
+
+The `QA` button in the page header opens a popup with every task in status `qa` (its `## QA checklist` in Hebrew, Pass / Fail). Pass sets `done`; Fail needs a reason and sets `reopened`; both write a Log line.
+
+- `quartz/cli/qa-api.js` serves `/api/qa` and `/api/qa/mark` from the site's own port and proxies them to the local service `vault qa serve` (127.0.0.1:8485, claude-vault `src/lib/qa_server.py`, which does the locked, validated note edit). A subprocess per request does not work: the quartz process holds ~14k watcher file descriptors and `spawn` fails with EBADF.
+- The site listens on all interfaces, so the API only answers a socket whose remote address is loopback or Tailscale (100.64.0.0/10, fd7a:115c:a1e0::/48), a `Host` that is one of this Mac's names, and, for POST, an `Origin` that is that name on the site port plus `application/json`. Everything else gets 403.
+- Service agent `com.yair.project-boards-qa` (copy of the plist in `launchd/`, log `~/Library/Logs/project-boards-qa.log`):
+
+```bash
+cp launchd/com.yair.project-boards-qa.plist ~/Library/LaunchAgents/
+launchctl bootout gui/$(id -u)/com.yair.project-boards-qa 2>/dev/null
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.yair.project-boards-qa.plist
+```
+
 ## Service
 
 launchd agent `com.yair.project-boards-website` runs `bin/project-boards-website` (`npx quartz build --serve --watch --port 8484`).

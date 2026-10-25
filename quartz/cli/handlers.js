@@ -15,6 +15,7 @@ import { WebSocketServer } from "ws"
 import { randomUUID } from "crypto"
 import { Mutex } from "async-mutex"
 import { CreateArgv } from "./args.js"
+import { handleQaApi } from "./qa-api.js"
 import { globby } from "globby"
 import {
   exitIfCancel,
@@ -454,6 +455,9 @@ export async function handleBuild(argv) {
 
     await build(clientRefresh)
     const server = http.createServer(async (req, res) => {
+      // CV-14: QA popup API (loopback/Tailscale only); never lets an error reach the static server
+      if (await handleQaApi(req, res, { port: argv.port })) return
+
       if (argv.baseDir && !req.url?.startsWith(argv.baseDir)) {
         console.log(
           styleText(
