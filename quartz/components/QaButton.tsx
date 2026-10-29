@@ -168,7 +168,8 @@ if (!window.__boardsQa) {
     dlg.appendChild(body)
     overlay.appendChild(dlg)
     overlay.addEventListener("click", (e) => { if (e.target === overlay) close() })
-    document.body.appendChild(overlay)
+    // Outside <body>: the SPA router patches body when the board rebuilds and would remove the popup.
+    document.documentElement.appendChild(overlay)
     try {
       const d = await api("/api/qa")
       setCount(d.tasks.length)

@@ -36,12 +36,19 @@ export function getStaticResourcesFromPlugins(ctx: BuildCtx) {
         if (!window.__quartzLiveReload) {
           window.__quartzLiveReload = true
           let dropped = false
+          // A rebuild re-renders the current page in place through the SPA router (it only patches document.body),
+          // so open popups mounted outside body and typed text survive. A reconnect after a server restart still
+          // does a full reload, since scripts and styles may have changed.
+          const hardReload = () => document.location.reload(true)
+          const softRefresh = () => {
+            if (window.spaNavigate) window.spaNavigate(new URL(location.href), true).catch(hardReload)
+            else hardReload()
+          }
           const connect = () => {
             const socket = new WebSocket('${wsUrl}')
-            // reload(true) ensures resources like images and scripts are fetched again in firefox
-            socket.addEventListener('message', () => document.location.reload(true))
+            socket.addEventListener('message', softRefresh)
             socket.addEventListener('open', () => {
-              if (dropped) document.location.reload(true)
+              if (dropped) hardReload()
             })
             socket.addEventListener('close', () => {
               dropped = true
