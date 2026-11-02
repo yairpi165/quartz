@@ -3,7 +3,8 @@ import { classNames } from "../util/lang"
 
 // Button that shows or hides the board sidebar. It sits fixed in the top corner on the sidebar's side,
 // so it stays reachable when the sidebar is hidden; collapsed, the board takes the full width.
-// State: html[data-boards-sidebar="collapsed"], remembered in localStorage.
+// State: html[data-boards-sidebar="collapsed"], remembered in localStorage ("collapsed" / "open"; unset
+// means the default for the screen width).
 const STORAGE_KEY = "boards-sidebar"
 
 function SidebarToggle({ displayClass }: QuartzComponentProps) {
@@ -19,13 +20,15 @@ function SidebarToggle({ displayClass }: QuartzComponentProps) {
   )
 }
 
-// Before first paint, so a reload does not flash the sidebar open.
+// Before first paint, so a reload does not flash the sidebar open. With no saved choice the sidebar is
+// open on a wide screen and closed on a phone, where it would cover most of the first screen.
 SidebarToggle.beforeDOMLoaded = `
-try {
-  if (localStorage.getItem("${STORAGE_KEY}") === "collapsed") {
-    document.documentElement.setAttribute("data-boards-sidebar", "collapsed")
-  }
-} catch (e) {}
+{
+  let stored = null
+  try { stored = localStorage.getItem("${STORAGE_KEY}") } catch (e) {}
+  const collapsed = stored ? stored === "collapsed" : window.matchMedia("(max-width: 800px)").matches
+  if (collapsed) document.documentElement.setAttribute("data-boards-sidebar", "collapsed")
+}
 `
 
 // One delegated listener: SPA navigation re-renders the button, the listener stays.
@@ -39,8 +42,7 @@ if (!window.__boardsSidebarToggle) {
     if (collapsed) root.setAttribute("data-boards-sidebar", "collapsed")
     else root.removeAttribute("data-boards-sidebar")
     try {
-      if (collapsed) localStorage.setItem("${STORAGE_KEY}", "collapsed")
-      else localStorage.removeItem("${STORAGE_KEY}")
+      localStorage.setItem("${STORAGE_KEY}", collapsed ? "collapsed" : "open")
     } catch (err) {}
   })
 }

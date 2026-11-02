@@ -3,16 +3,19 @@ import { PageTypes } from "./quartz/plugins"
 import BoardsNav from "./quartz/components/BoardsNav"
 import SidebarToggle from "./quartz/components/SidebarToggle"
 import QaButton from "./quartz/components/QaButton"
+import BoardsDecor from "./quartz/components/BoardsDecor"
 
 const config = await loadQuartzConfig()
 
-// The board list goes at the end of the sidebar, and the sidebar show/hide button into the header, on
+// The board list goes at the end of the sidebar, and the sidebar show/hide button, the QA button and the
+// (invisible) board decorations into the header, on
 // every page type (except 404, which has neither). loadQuartzConfig builds the PageTypeDispatcher from
 // the YAML layout, so swap in one built from this layout.
 const layout = await loadQuartzLayout()
 const boardsNav = BoardsNav()
 const sidebarToggle = SidebarToggle()
 const qaButton = QaButton()
+const boardsDecor = BoardsDecor()
 for (const [pageType, pageLayout] of Object.entries(layout.byPageType)) {
   if (pageType === "404") continue
   // page types share the defaults' header array; build a new one per page type
@@ -20,12 +23,18 @@ for (const [pageType, pageLayout] of Object.entries(layout.byPageType)) {
     ...(pageLayout.header ?? layout.defaults.header ?? []),
     sidebarToggle,
     qaButton,
+    boardsDecor,
   ]
   // a page type without its own `left` falls back to the defaults, which get it below
   if (pageLayout.left) pageLayout.left = [...pageLayout.left, boardsNav]
 }
 layout.defaults.left = [...(layout.defaults.left ?? []), boardsNav]
-layout.defaults.header = [...(layout.defaults.header ?? []), sidebarToggle, qaButton]
+layout.defaults.header = [
+  ...(layout.defaults.header ?? []),
+  sidebarToggle,
+  qaButton,
+  boardsDecor,
+]
 config.plugins.emitters = config.plugins.emitters.map((emitter) =>
   emitter.name === "PageTypeDispatcher"
     ? PageTypes.PageTypeDispatcher({ defaults: layout.defaults, byPageType: layout.byPageType })

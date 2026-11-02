@@ -31,6 +31,30 @@ $boardsSidebarWidth: 220px;
       // room at the top for the fixed show/hide button
       padding: 3.5rem 1rem 2rem 1rem;
     }
+    // mobile (sidebar opened by hand): a compact stack, the board list as chips (BoardsNav)
+    @media all and ($mobile) {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.7rem;
+      padding: 0.5rem 0.75rem 0.75rem;
+    }
+
+    // the site name is a label, not a headline: keep it smaller than the board's own title
+    & .page-title {
+      margin: 0;
+      font-size: 1.15rem;
+    }
+    // same size and frame as the search button next to it
+    & .darkmode {
+      display: grid;
+      place-items: center;
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      border: 1px solid var(--lightgray);
+      border-radius: 6px;
+      background: none;
+    }
   }
 
   // mobile: a strip on top for the fixed buttons (sidebar toggle + QA), so they never cover the

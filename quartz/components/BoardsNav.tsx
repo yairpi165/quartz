@@ -66,6 +66,17 @@ BoardsNav.css = `
   color: var(--secondary);
   font-weight: 600;
 }
+/* phone: the boards as a row of chips instead of a tall list */
+@media (max-width: 800px) {
+  .boards-nav h3 { display: none; }
+  .boards-nav ul { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .boards-nav li a.internal {
+    padding: 0.3rem 0.85rem;
+    border: 1px solid var(--lightgray);
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+}
 `
 
 export default (() => BoardsNav) satisfies QuartzComponentConstructor

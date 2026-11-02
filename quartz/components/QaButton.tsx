@@ -50,6 +50,43 @@ if (!window.__boardsQa) {
     refreshCount()
   }
 
+  // A check is often one long line: "(build tag) 1) do X. צריך לראות: Y. 2) do Z. ...". Split it into
+  // numbered steps and set the expected result of each on its own line. Plain text stays plain.
+  const EXPECT = "צריך לראות:"
+  const stepNode = (text) => {
+    const li = el("li", "qa-step")
+    const at = text.indexOf(EXPECT)
+    if (at < 0) {
+      li.textContent = text
+      return li
+    }
+    li.appendChild(document.createTextNode(text.slice(0, at).trim()))
+    const exp = el("div", "qa-expect")
+    exp.appendChild(el("b", "", EXPECT))
+    exp.appendChild(document.createTextNode(" " + text.slice(at + EXPECT.length).trim()))
+    li.appendChild(exp)
+    return li
+  }
+  const checkItem = (raw) => {
+    const li = el("li", "qa-check")
+    let rest = raw.trim()
+    const tag = /^\\([^)]*\\)\\s*/.exec(rest)
+    if (tag) {
+      li.appendChild(el("span", "qa-tag", tag[0].trim()))
+      rest = rest.slice(tag[0].length)
+    }
+    const parts = rest.split(/(?:^|\\s)(?=\\d+\\)\\s)/).map((s) => s.trim()).filter(Boolean)
+    if (parts.length < 2) {
+      const one = stepNode(rest)
+      while (one.firstChild) li.appendChild(one.firstChild)
+      return li
+    }
+    const ol = el("ol", "qa-steps")
+    parts.forEach((p) => ol.appendChild(stepNode(p.replace(/^\\d+\\)\\s*/, ""))))
+    li.appendChild(ol)
+    return li
+  }
+
   const card = (task, onDone) => {
     const c = el("section", "qa-card")
     const head = el("h4", "qa-task-title")
@@ -59,7 +96,7 @@ if (!window.__boardsQa) {
     c.appendChild(el("div", "qa-label", "מה לבדוק"))
     const ul = el("ul", "qa-checks")
     if (!task.checklist.length) ul.appendChild(el("li", "qa-nocheck", "לא הוגדרה רשימת בדיקה למשימה הזו"))
-    task.checklist.forEach((t) => ul.appendChild(el("li", "", t)))
+    task.checklist.forEach((t) => ul.appendChild(checkItem(t)))
     c.appendChild(ul)
     const err = el("div", "qa-error")
     err.setAttribute("role", "alert")
@@ -126,8 +163,9 @@ if (!window.__boardsQa) {
     return c
   }
 
-  const render = (body, tasks) => {
+  const render = (body, tasks, progress) => {
     body.replaceChildren()
+    progress.textContent = ""
     if (!tasks.length) {
       body.appendChild(el("p", "qa-empty", "אין משימות שמחכות ל-QA 🎉"))
       return
@@ -137,11 +175,15 @@ if (!window.__boardsQa) {
     tasks.forEach((t) => (byArea[t.area] = byArea[t.area] || []).push(t))
     const areas = Object.keys(byArea).sort((a, b) => (here.includes(slug(b)) ? 1 : 0) - (here.includes(slug(a)) ? 1 : 0) || a.localeCompare(b))
     let left = tasks.length
+    const total = tasks.length
+    const showLeft = () => (progress.textContent = left ? "נותרו " + left + " מתוך " + total : "הכול נבדק")
+    showLeft()
     areas.forEach((a) => {
       body.appendChild(el("h3", "qa-area", a))
       byArea[a].forEach((t) =>
         body.appendChild(card(t, () => {
           left -= 1
+          showLeft()
           if (!left) body.appendChild(el("p", "qa-empty", "סיימת את כל הבדיקות 🎉"))
         })),
       )
@@ -156,7 +198,10 @@ if (!window.__boardsQa) {
     dlg.setAttribute("aria-modal", "true")
     dlg.setAttribute("aria-label", "בדיקות QA")
     const top = el("div", "qa-top")
-    top.appendChild(el("h2", "qa-heading", "בדיקות QA"))
+    const heading = el("h2", "qa-heading", "בדיקות QA")
+    const progress = el("span", "qa-progress")
+    heading.appendChild(progress)
+    top.appendChild(heading)
     const x = el("button", "qa-close", "✕")
     x.type = "button"
     x.setAttribute("aria-label", "סגור")
@@ -173,7 +218,7 @@ if (!window.__boardsQa) {
     try {
       const d = await api("/api/qa")
       setCount(d.tasks.length)
-      render(body, d.tasks)
+      render(body, d.tasks, progress)
     } catch (e) {
       body.replaceChildren(el("p", "qa-error", e.message))
     }
@@ -242,15 +287,24 @@ QaButton.css = `
 /* Only the task list scrolls; the heading and close button stay put. */
 .qa-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .qa-heading { margin: 0; font-size: 1.3rem; }
+.qa-progress { margin-inline-start: 0.7rem; font-size: 0.85rem; font-weight: 400; color: var(--gray); }
 .qa-close { border: 0; background: none; color: var(--darkgray); font-size: 1.3rem; cursor: pointer; padding: 0.3rem 0.5rem; }
 .qa-area { margin: 1rem 0 0.4rem; font-size: 1rem; color: var(--secondary); }
 .qa-card { border: 1px solid var(--lightgray); border-radius: 8px; padding: 0.8rem 0.9rem; margin: 0.6rem 0; }
 .qa-task-title { margin: 0 0 0.5rem; font-size: 1rem; }
 .qa-id { display: inline-block; padding: 0 0.4rem; border-radius: 4px; background: var(--highlight); color: var(--secondary); font-family: var(--codeFont); font-size: 0.85rem; direction: ltr; }
 .qa-label { font-size: 0.8rem; color: var(--gray); margin-bottom: 0.2rem; }
-.qa-checks { margin: 0 0 0.7rem; padding-inline-start: 1.2rem; }
-.qa-checks li { margin: 0.25rem 0; line-height: 1.5; }
-.qa-nocheck { color: var(--gray); list-style: none; margin-inline-start: -1.2rem; }
+.qa-checks { margin: 0 0 0.7rem; padding: 0; list-style: none; }
+.qa-check { margin: 0 0 0.6rem; line-height: 1.55; }
+.qa-tag { display: inline-block; margin-bottom: 0.3rem; padding: 0 0.5rem; border-radius: 999px; background: var(--highlight); color: var(--secondary); font-size: 0.78rem; }
+.qa-steps { margin: 0; padding-inline-start: 1.4rem; }
+.qa-step { margin: 0.35rem 0; }
+.qa-step::marker { color: var(--secondary); font-weight: 600; }
+.qa-expect { margin-top: 0.15rem; padding-inline-start: 0.6rem; border-inline-start: 3px solid var(--secondary); color: var(--darkgray); font-size: 0.92rem; }
+.qa-expect b { color: var(--secondary); }
+.qa-nocheck { color: var(--gray); }
+/* the verdict buttons stay in view while a long card scrolls past */
+.qa-card > .qa-actions, .qa-card > .qa-failbox { position: sticky; bottom: 0; padding: 0.5rem 0 0.1rem; background: var(--light); }
 .qa-actions { display: flex; gap: 0.6rem; }
 .qa-actions[hidden], .qa-failbox[hidden] { display: none; }
 .qa-actions button, .qa-send, .qa-cancel {

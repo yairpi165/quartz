@@ -255,6 +255,10 @@ plugins:
         - description
         - tags
         - aliases
+        - status
+        - priority
+        - owner
+        - effort
       excludedProperties: []
       hidePropertiesView: false
       delimiters: ---
