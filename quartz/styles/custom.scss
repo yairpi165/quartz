@@ -43,6 +43,17 @@ $boardsSidebarWidth: 220px;
     @media all and ($mobile) {
       padding: 0 0.75rem;
     }
+    // Quartz leaves 6rem above the title (+2rem on the h1), a wide empty band under the fixed buttons.
+    // Start the title level with the sidebar's own title instead.
+    & .page-header {
+      margin-top: 3.5rem;
+      @media all and ($mobile) {
+        margin-top: 0.5rem;
+      }
+      & h1 {
+        margin-top: 0;
+      }
+    }
     @media all and not ($mobile) {
       grid-column: 2;
       grid-row: 1 / 3;
@@ -74,17 +85,19 @@ $boardsSidebarWidth: 220px;
   max-width: none;
 }
 
-// Kanban: every column visible, side by side. Columns share the width equally and shrink down to
-// 190px (five columns fit from ~1300px); below that the board scrolls horizontally inside its own
-// container (upstream `overflow-x: auto`), never clipped. Wrapping was rejected: a tall column pushed
-// the next row thousands of pixels down.
+// Kanban: every column in one row, side by side. A grid row (not flex) so every column is always as
+// tall as the board, however few cards it holds. Columns share the width equally and shrink down to
+// 240px; below that the board scrolls horizontally inside its own container, never clipped. Wrapping
+// was rejected: a tall column pushed the next row thousands of pixels down.
 .bases-board {
-  flex-wrap: nowrap;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(240px, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   overflow-x: auto;
 }
 .bases-board-column {
-  flex: 1 1 0;
-  min-width: 190px;
+  min-width: 0;
 }
 .bases-board-card {
   overflow-wrap: anywhere;
@@ -98,12 +111,10 @@ $boardsSidebarWidth: 220px;
 // column to column.
 @media all and ($mobile) {
   .bases-board {
+    grid-auto-columns: min(80%, 24rem);
     scroll-snap-type: x mandatory;
   }
   .bases-board-column {
-    flex: 0 0 80%;
-    max-width: 24rem;
-    min-width: 0;
     scroll-snap-align: start;
   }
 }
