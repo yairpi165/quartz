@@ -27,7 +27,13 @@ if (!window.__boardsQa) {
     if (text !== undefined) n.textContent = text
     return n
   }
-  const slug = (s) => s.trim().replace(/\\s+/g, "-").toLowerCase()
+  const slug = (s) => s.trim().replace(/\\s+/g, "-").replace(/[?#]/g, "").toLowerCase()
+  // On a board page only that board's tasks; anywhere else (home, a note) all boards'. Same rule as the E2E popup.
+  const scoped = (tasks) => {
+    const here = decodeURIComponent(location.pathname).toLowerCase()
+    const mine = tasks.filter((t) => here.includes("/" + slug(t.area) + "/") || here.includes("/" + slug(t.area) + "-board"))
+    return mine.length ? mine : tasks.filter(() => !/\\/projects\\//.test(here))
+  }
   const api = async (path, opts) => {
     const res = await fetch(path, Object.assign({ cache: "no-store" }, opts))
     let data = {}
@@ -41,7 +47,7 @@ if (!window.__boardsQa) {
       b.hidden = !n
     })
   }
-  const refreshCount = () => api("/api/qa").then((d) => setCount(d.tasks.length)).catch(() => {})
+  const refreshCount = () => api("/api/qa").then((d) => setCount(scoped(d.tasks).length)).catch(() => {})
 
   let overlay = null
   const close = () => {
@@ -217,8 +223,9 @@ if (!window.__boardsQa) {
     document.documentElement.appendChild(overlay)
     try {
       const d = await api("/api/qa")
-      setCount(d.tasks.length)
-      render(body, d.tasks, progress)
+      const tasks = scoped(d.tasks)
+      setCount(tasks.length)
+      render(body, tasks, progress)
     } catch (e) {
       body.replaceChildren(el("p", "qa-error", e.message))
     }
