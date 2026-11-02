@@ -1,5 +1,14 @@
 @use "./variables.scss" as *;
 
+// No scrollbars anywhere (page, board, columns, QA list); scrolling by wheel, trackpad, touch and
+// keyboard still works.
+* {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 // Board-first layout: one narrow sidebar (title, search, dark mode, board list) on the visual RIGHT,
 // no second sidebar, and the center (the kanban) takes all remaining width. The site is RTL (he-IL),
 // where the first grid column is the rightmost one, so the sidebar sits in the first column.
@@ -198,7 +207,6 @@ $boardsSidebarWidth: 220px;
       min-height: 0;
       overflow-y: auto;
       overscroll-behavior: contain;
-      scrollbar-width: thin;
     }
   }
 }
