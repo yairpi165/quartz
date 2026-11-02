@@ -4,11 +4,17 @@ import { QuartzComponentConstructor } from "./types"
 // from the bases-page plugin, the notes from the vault). It renders nothing; its script tags the DOM with
 // data attributes and its CSS keys on them. Runs on load and after every SPA navigation / in-place
 // refresh (the `nav` event), and is idempotent because micromorph may re-use nodes.
-//   - cards: the "Name" row shows only the task id, "Owner" is hidden, "Priority" is a coloured tag
+//   - cards: the "Name" row shows only the task id, "Owner" is hidden, "Priority" is a coloured tag, and
+//     "Kind" shows only for bugs, as a "bug" tag (CV-21; other kinds are hidden)
 //   - columns: tagged with their status so qa / in-review stand out and done is muted
 //   - board: a fade on the side that has more columns off screen (the scrollbar is hidden)
 //   - table: the id-only Name column, dates on one line
 //   - task page: back link to the board, no duplicated title, English paragraphs read left to right
+// What the cards script stores in data-kind for a Kind cell's text (kept in sync by boardsDecor.test.ts).
+export function kindOf(text: string): string {
+  return text.trim().toLowerCase()
+}
+
 function BoardsDecor() {
   return null
 }
@@ -36,6 +42,7 @@ if (!window.__boardsDecor) {
           span.textContent = id
         }
       }
+      if (key === "kind") row.dataset.kind = ${kindOf.toString()}(val.textContent)
       if (key === "priority") row.dataset.priority = val.textContent.trim().toLowerCase()
     })
   }
@@ -169,6 +176,20 @@ BoardsDecor.css = `
 .bases-board-card-row[data-priority="highest"] .bases-board-card-value { background: #d64545; color: #fff; }
 .bases-board-card-row[data-priority="high"] .bases-board-card-value { background: #e8863a; color: #fff; }
 .bases-board-card-row[data-priority="medium"] .bases-board-card-value { background: var(--highlight); color: var(--secondary); }
+
+/* kind: only bugs get a tag (red outline, so it differs from the filled "highest" priority tag) */
+.bases-board-card-row[data-prop="kind"] { display: none; }
+.bases-board-card-row[data-prop="kind"][data-kind="bug"] { display: block; }
+.bases-board-card-row[data-prop="kind"] .bases-board-card-label { display: none; }
+.bases-board-card-row[data-prop="kind"] .bases-board-card-value {
+  display: inline-block;
+  padding: 0 0.55rem;
+  border: 1px solid #d64545;
+  border-radius: 999px;
+  color: #d64545;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
 
 /* columns: what waits for you stands out, finished work is quiet */
 .bases-board-column[data-status="qa"] {
