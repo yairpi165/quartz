@@ -84,7 +84,7 @@ if (!window.__boardsE2e) {
     const byArea = {}
     tasks.forEach((t) => (byArea[t.area] = byArea[t.area] || []).push(t))
     Object.keys(byArea).sort().forEach((a) => {
-      if (Object.keys(byArea).length > 1) body.appendChild(el("h3", "qa-area", a))
+      body.appendChild(el("h3", "qa-area", a))
       byArea[a].forEach((t) => body.appendChild(row(t)))
     })
   }
@@ -97,7 +97,10 @@ if (!window.__boardsE2e) {
     dlg.setAttribute("aria-modal", "true")
     dlg.setAttribute("aria-label", "רגרסיות E2E")
     const top = el("div", "qa-top")
-    top.appendChild(el("h2", "qa-heading", "רגרסיות E2E"))
+    const heading = el("h2", "qa-heading", "רגרסיות E2E")
+    const progress = el("span", "qa-progress")
+    heading.appendChild(progress)
+    top.appendChild(heading)
     const x = el("button", "qa-close", "✕")
     x.type = "button"
     x.setAttribute("aria-label", "סגור")
@@ -114,6 +117,7 @@ if (!window.__boardsE2e) {
     try {
       const t = await load()
       setCount(t.length)
+      progress.textContent = t.length + " פתוחות"
       render(body, t)
     } catch (e) {
       body.replaceChildren(el("p", "qa-error", e.message))
@@ -147,15 +151,17 @@ E2eButton.css = `
   cursor: pointer;
 }
 .boards-e2e-button[hidden] { display: none; }
-.boards-e2e-button:hover { color: #d64545; border-color: #d64545; }
+.boards-e2e-button:hover { color: var(--secondary); border-color: var(--secondary); }
 .boards-e2e-count {
   margin-inline-start: 0.4rem;
   padding: 0.1rem 0.4rem;
   border-radius: 999px;
-  background: #d64545;
-  color: #fff;
+  background: var(--secondary);
+  color: var(--light);
   font-size: 0.75rem;
 }
+.qa-heading { unicode-bidi: plaintext; }
+.qa-progress { unicode-bidi: isolate; }
 .e2e-link { color: inherit; text-decoration: none; }
 .e2e-link:hover { color: var(--secondary); text-decoration: underline; }
 .e2e-meta { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; font-size: 0.85rem; color: var(--darkgray); }
