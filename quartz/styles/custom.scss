@@ -140,11 +140,6 @@ $boardsSidebarWidth: 220px;
         & .center {
           grid-area: grid-center;
         }
-
-        // the Quartz credit line would eat board height
-        & > footer {
-          display: none;
-        }
       }
 
       & .center {
