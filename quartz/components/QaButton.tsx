@@ -223,9 +223,12 @@ QaButton.css = `
   align-items: flex-start;
   justify-content: center;
   padding: 4vh 1rem;
-  overflow-y: auto;
 }
 .qa-dialog {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  max-height: 100%;
   width: min(42rem, 100%);
   background: var(--light);
   color: var(--dark);
@@ -235,7 +238,9 @@ QaButton.css = `
   direction: rtl;
   text-align: start;
 }
-.qa-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.qa-top { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+/* Only the task list scrolls; the heading and close button stay put. */
+.qa-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .qa-heading { margin: 0; font-size: 1.3rem; }
 .qa-close { border: 0; background: none; color: var(--darkgray); font-size: 1.3rem; cursor: pointer; padding: 0.3rem 0.5rem; }
 .qa-area { margin: 1rem 0 0.4rem; font-size: 1rem; color: var(--secondary); }
@@ -269,7 +274,7 @@ QaButton.css = `
 .qa-empty { text-align: center; padding: 1.5rem 0; color: var(--darkgray); }
 @media (max-width: 600px) {
   .qa-overlay { padding: 0; }
-  .qa-dialog { width: 100%; min-height: 100%; border-radius: 0; border: 0; box-sizing: border-box; }
+  .qa-dialog { width: 100%; height: 100%; border-radius: 0; border: 0; }
 }
 `
 
