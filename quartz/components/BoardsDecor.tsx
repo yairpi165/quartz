@@ -79,7 +79,7 @@ if (!window.__boardsDecor) {
         ;(d.tasks || []).forEach((t) => (by[t.id] = t))
         cols.forEach((col) =>
           col.querySelectorAll(".bases-board-card").forEach((card) => {
-            const nameEl = card.querySelector('.bases-board-card-row[data-prop="name"]')
+            const nameEl = card.querySelector('.bases-board-card-row[data-prop="name"] .bases-board-card-value')
             const id = nameEl && idOf(nameEl.textContent)
             const t = id && by[id]
             if (!t) return

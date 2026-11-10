@@ -91,7 +91,7 @@ describe("BoardsDecor sim-qa column (CV-22)", () => {
         querySelector: (sel: string) =>
           sel.includes("boards-simcount")
             ? (added[0] ?? null)
-            : sel.includes('data-prop="name"')
+            : sel.includes('data-prop="name"') && sel.includes("bases-board-card-value")
               ? { textContent: id }
               : null,
         appendChild: (n: any) => added.push(n),
