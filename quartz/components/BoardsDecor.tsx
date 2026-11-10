@@ -82,8 +82,11 @@ if (!window.__boardsDecor) {
             const nameEl = card.querySelector('.bases-board-card-row[data-prop="name"] .bases-board-card-value')
             const id = nameEl && idOf(nameEl.textContent)
             const t = id && by[id]
-            if (!t) return
             let badge = card.querySelector(".boards-simcount")
+            if (!t) {
+              if (badge) badge.remove()
+              return
+            }
             if (!badge) {
               badge = document.createElement("div")
               badge.className = "boards-simcount"
@@ -242,11 +245,11 @@ BoardsDecor.css = `
 .bases-board-column[data-status="qa"] .bases-board-column-header { color: var(--secondary); }
 .bases-board-column[data-status="qa"] .bases-board-count { background: var(--secondary); color: var(--light); }
 .bases-board-column[data-status="sim-qa"] {
-  border-color: var(--tertiary);
-  box-shadow: 0 0 0 1px var(--tertiary);
+  border-color: #3a9d8f;
+  box-shadow: 0 0 0 1px #3a9d8f;
 }
-.bases-board-column[data-status="sim-qa"] .bases-board-column-header { color: var(--tertiary); }
-.bases-board-column[data-status="sim-qa"] .bases-board-count { background: var(--tertiary); color: var(--light); }
+.bases-board-column[data-status="sim-qa"] .bases-board-column-header { color: #3a9d8f; }
+.bases-board-column[data-status="sim-qa"] .bases-board-count { background: #3a9d8f; color: #fff; }
 .boards-simcount {
   margin-top: 0.4rem;
   direction: ltr;
@@ -294,7 +297,7 @@ BoardsDecor.css = `
   line-height: 1.7;
 }
 .center .note-properties-row[data-key="status"][data-value="done"] .note-properties-value { background: #2e9d57; color: #fff; }
-.center .note-properties-row[data-key="status"][data-value="sim-qa"] .note-properties-value { background: var(--tertiary); color: var(--light); }
+.center .note-properties-row[data-key="status"][data-value="sim-qa"] .note-properties-value { background: #3a9d8f; color: #fff; }
 .center .note-properties-row[data-key="status"][data-value="qa"] .note-properties-value { background: var(--secondary); color: var(--light); }
 .center .note-properties-row[data-key="priority"][data-value="highest"] .note-properties-value { background: #d64545; color: #fff; }
 .center .note-properties-row[data-key="priority"][data-value="high"] .note-properties-value { background: #e8863a; color: #fff; }
