@@ -182,6 +182,27 @@ describe("api over loopback", () => {
       s.server.close()
     }
   })
+  test("GET /api/sim proxies to /sim read-only with the same guards (CV-22)", async () => {
+    const s = await serve(async () => ({
+      status: 200,
+      json: { tasks: [{ id: "V-1", sim: 1, device: 2 }] },
+    }))
+    try {
+      let r = await call(s.port, "GET", "/api/sim?area=vela")
+      assert.deepStrictEqual(
+        [r.status, JSON.parse(r.body)],
+        [200, { tasks: [{ id: "V-1", sim: 1, device: 2 }] }],
+      )
+      assert.deepStrictEqual(s.calls[0], { method: "GET", path: "/sim?area=vela" })
+      r = await call(s.port, "GET", "/api/sim", { headers: { host: "evil.example.com" } })
+      assert.strictEqual(r.status, 403)
+      r = await call(s.port, "POST", "/api/sim", { body: {} })
+      assert.strictEqual(r.status, 405)
+      assert.strictEqual(s.calls.length, 1)
+    } finally {
+      s.server.close()
+    }
+  })
   test("POST pass and fail call the service with exact bodies", async () => {
     const s = await serve(ok)
     try {

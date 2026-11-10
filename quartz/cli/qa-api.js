@@ -105,16 +105,21 @@ function readBody(req) {
   })
 }
 
-/** Handles /api/qa*, plus the read-only /api/e2e list (CV-18); returns true when the request was its. Never throws. */
+/** Handles /api/qa*, plus the read-only /api/e2e (CV-18) and /api/sim (CV-22) lists; returns true when the request was its. Never throws. */
 export async function handleQaApi(req, res, { port, call = callService } = {}) {
   const url = new URL(req.url || "/", "http://x")
-  if (url.pathname !== "/api/qa" && url.pathname !== "/api/qa/mark" && url.pathname !== "/api/e2e")
+  if (
+    url.pathname !== "/api/qa" &&
+    url.pathname !== "/api/qa/mark" &&
+    url.pathname !== "/api/e2e" &&
+    url.pathname !== "/api/sim"
+  )
     return false
   try {
     if (!isAllowedAddress(req.socket && req.socket.remoteAddress))
       return (send(res, 403, { error: "forbidden" }), true)
     if (!isAllowedHost(req.headers.host)) return (send(res, 403, { error: "forbidden host" }), true)
-    if (url.pathname === "/api/qa" || url.pathname === "/api/e2e") {
+    if (url.pathname === "/api/qa" || url.pathname === "/api/e2e" || url.pathname === "/api/sim") {
       if (req.method !== "GET") return (send(res, 405, { error: "method not allowed" }), true)
       const origin = req.headers.origin
       if (origin && !isAllowedOrigin(origin, port))
@@ -123,7 +128,9 @@ export async function handleQaApi(req, res, { port, call = callService } = {}) {
       if (area && !AREA.test(area)) return (send(res, 400, { error: "bad area" }), true)
       const r = await call({
         method: "GET",
-        path: (url.pathname === "/api/e2e" ? "/e2e" : "/qa") + (area ? "?area=" + encodeURIComponent(area) : ""),
+        path:
+          (url.pathname === "/api/e2e" ? "/e2e" : url.pathname === "/api/sim" ? "/sim" : "/qa") +
+          (area ? "?area=" + encodeURIComponent(area) : ""),
       })
       return (send(res, r.status, r.json), true)
     }

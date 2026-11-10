@@ -15,6 +15,17 @@ export function kindOf(text: string): string {
   return text.trim().toLowerCase()
 }
 
+// The sim-qa column (CV-22): its header shows this label; the status stays "sim-qa" in data-status.
+export const SIM_QA_LABEL = "QA סימולטור"
+export function columnStatus(text: string): string {
+  const s = text.trim().toLowerCase()
+  return s === "qa סימולטור" ? "sim-qa" : s
+}
+// The count line on a sim-qa card: what is left for the simulator and for Yair's device.
+export function simBadge(sim: number, device: number): string {
+  return "[sim] " + sim + " / [device] " + device
+}
+
 function BoardsDecor() {
   return null
 }
@@ -49,8 +60,40 @@ if (!window.__boardsDecor) {
   const columns = () => {
     document.querySelectorAll(".bases-board-column").forEach((col) => {
       const name = col.querySelector(".bases-board-column-header span")
-      if (name) col.dataset.status = name.textContent.trim().toLowerCase()
+      if (!name) return
+      const status = ${columnStatus.toString()}(name.textContent)
+      col.dataset.status = status
+      if (status === "sim-qa" && name.textContent !== ${JSON.stringify(SIM_QA_LABEL)})
+        name.textContent = ${JSON.stringify(SIM_QA_LABEL)}
     })
+    simCounts()
+  }
+  // sim-qa cards show "[sim] n / [device] m" (from /api/sim); only fetched when the board has that column
+  const simCounts = () => {
+    const cols = Array.from(document.querySelectorAll(".bases-board-column")).filter((c) => c.dataset.status === "sim-qa")
+    if (!cols.length || typeof fetch !== "function") return
+    fetch("/api/sim", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { tasks: [] }))
+      .then((d) => {
+        const by = {}
+        ;(d.tasks || []).forEach((t) => (by[t.id] = t))
+        cols.forEach((col) =>
+          col.querySelectorAll(".bases-board-card").forEach((card) => {
+            const nameEl = card.querySelector('.bases-board-card-row[data-prop="name"]')
+            const id = nameEl && idOf(nameEl.textContent)
+            const t = id && by[id]
+            if (!t) return
+            let badge = card.querySelector(".boards-simcount")
+            if (!badge) {
+              badge = document.createElement("div")
+              badge.className = "boards-simcount"
+              card.appendChild(badge)
+            }
+            badge.textContent = ${simBadge.toString()}(t.sim, t.device)
+          }),
+        )
+      })
+      .catch(() => {})
   }
   const tables = () => {
     document.querySelectorAll("table.bases-table").forEach((table) => {
@@ -198,6 +241,19 @@ BoardsDecor.css = `
 }
 .bases-board-column[data-status="qa"] .bases-board-column-header { color: var(--secondary); }
 .bases-board-column[data-status="qa"] .bases-board-count { background: var(--secondary); color: var(--light); }
+.bases-board-column[data-status="sim-qa"] {
+  border-color: var(--tertiary);
+  box-shadow: 0 0 0 1px var(--tertiary);
+}
+.bases-board-column[data-status="sim-qa"] .bases-board-column-header { color: var(--tertiary); }
+.bases-board-column[data-status="sim-qa"] .bases-board-count { background: var(--tertiary); color: var(--light); }
+.boards-simcount {
+  margin-top: 0.4rem;
+  direction: ltr;
+  font-family: var(--codeFont);
+  font-size: 0.72rem;
+  color: var(--gray);
+}
 .bases-board-column[data-status="in-review"] .bases-board-column-header { color: var(--tertiary); }
 .bases-board-column[data-status="done"] .bases-board-card { opacity: 0.65; }
 
@@ -238,6 +294,7 @@ BoardsDecor.css = `
   line-height: 1.7;
 }
 .center .note-properties-row[data-key="status"][data-value="done"] .note-properties-value { background: #2e9d57; color: #fff; }
+.center .note-properties-row[data-key="status"][data-value="sim-qa"] .note-properties-value { background: var(--tertiary); color: var(--light); }
 .center .note-properties-row[data-key="status"][data-value="qa"] .note-properties-value { background: var(--secondary); color: var(--light); }
 .center .note-properties-row[data-key="priority"][data-value="highest"] .note-properties-value { background: #d64545; color: #fff; }
 .center .note-properties-row[data-key="priority"][data-value="high"] .note-properties-value { background: #e8863a; color: #fff; }
