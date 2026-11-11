@@ -268,6 +268,21 @@ html.boards-task-open, html.boards-task-open body { overflow: hidden; }
 .boards-task-body article h1 { margin: 0.25rem 0 0.75rem; font-size: 1.6rem; }
 .boards-task-body article > :first-child { margin-top: 0; }
 .boards-task-status { color: var(--gray); }
+/* the overlay hangs on <html>, outside <body> and .page, so it inherits none of their type rules */
+.boards-task-overlay { font-family: var(--bodyFont); color: var(--darkgray); }
+.boards-task-content :is(h1, h2, h3, h4) { font-family: var(--headerFont); color: var(--dark); }
+.boards-task-content :is(ul, ol) { padding-inline-start: 1.5rem; }
+.boards-task-content li:has(> input[type="checkbox"]) { list-style-type: none; }
+.boards-task-content ul.contains-task-list { padding-inline-start: 1.6rem; }
+.boards-task-content li:has(> input[type="checkbox"]:checked) {
+  text-decoration: line-through;
+  text-decoration-color: var(--gray);
+  color: var(--gray);
+}
+.boards-task-content li > * { margin-top: 0; margin-bottom: 0; }
+.boards-task-content :is(p, li) { line-height: 1.6rem; }
+.boards-task-content p > strong { color: var(--dark); }
+.boards-task-content pre { overflow-x: auto; }
 @media (max-width: 800px) {
   .boards-task-overlay { padding: 0; align-items: stretch; }
   .boards-task-panel {
