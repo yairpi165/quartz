@@ -265,6 +265,19 @@ $boardsSidebarWidth: 220px;
   & button {
     min-height: 2.1rem;
     padding: 0.3rem 0.95rem;
+    white-space: nowrap;
+  }
+
+  // phone: one row that swipes sideways instead of wrapping onto a second line
+  @media all and ($mobile) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-inline: -0.75rem;
+    padding-inline: 0.75rem;
+
+    & button {
+      flex: none;
+    }
   }
 }
 // the sidebar: a little more air between the site name, search and the board list
