@@ -246,6 +246,8 @@ QaButton.css = `
   top: 0.75rem;
   inset-inline-start: 3.4rem;
   z-index: 10;
+  /* wide enough for "QA" + a 2-digit count, so the E2E button next to it never touches it */
+  min-width: 4.9rem;
   height: 2.2rem;
   padding: 0 0.7rem;
   border: 1px solid var(--lightgray);
@@ -259,8 +261,8 @@ QaButton.css = `
 }
 .boards-qa-button:hover { color: var(--secondary); border-color: var(--secondary); }
 .boards-qa-count {
-  margin-inline-start: 0.4rem;
-  padding: 0.1rem 0.4rem;
+  margin-inline-start: 0.45rem;
+  padding: 0.1rem 0.45rem;
   border-radius: 999px;
   background: var(--secondary);
   color: var(--light);

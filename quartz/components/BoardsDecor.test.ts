@@ -1,6 +1,14 @@
 import test, { describe } from "node:test"
 import assert from "node:assert"
-import BoardsDecor, { kindOf, simBadge, columnStatus, SIM_QA_LABEL } from "./BoardsDecor"
+import BoardsDecor, {
+  kindOf,
+  simBadge,
+  columnStatus,
+  SIM_QA_LABEL,
+  STATUS_ORDER,
+  missingColumns,
+} from "./BoardsDecor"
+import { opensInPopup } from "./TaskPopup"
 
 const Decor = (BoardsDecor as any)() as { afterDOMLoaded: string; css: string }
 
@@ -182,5 +190,43 @@ describe("BoardsDecor sim-qa column (CV-22)", () => {
   test("css styles the sim-qa column like qa, in its own tint", () => {
     assert.match(Decor.css, /\[data-status="sim-qa"\]/)
     assert.match(Decor.css, /\.boards-simcount/)
+  })
+})
+
+describe("empty status columns (CV-25)", () => {
+  test("every missing status goes in front of the next present one, in board order", () => {
+    assert.deepStrictEqual(missingColumns(["backlog", "qa", "done"], STATUS_ORDER), [
+      { status: "todo", before: "qa" },
+      { status: "in-progress", before: "qa" },
+      { status: "in-review", before: "qa" },
+      { status: "sim-qa", before: "qa" },
+      { status: "reopened", before: "done" },
+    ])
+  })
+  test("a status after the last present one goes at the end", () => {
+    assert.deepStrictEqual(missingColumns(["backlog", "todo", "in-progress", "in-review", "sim-qa", "qa", "reopened"], STATUS_ORDER), [
+      { status: "done", before: null },
+    ])
+  })
+  test("a board grouped by something else is left alone", () => {
+    assert.deepStrictEqual(missingColumns(["backlog", "VELA-12 Epic"], STATUS_ORDER), [])
+    assert.deepStrictEqual(missingColumns([], STATUS_ORDER), [])
+  })
+  test("the embedded script carries the order", () => {
+    assert.ok(Decor.afterDOMLoaded.includes(JSON.stringify(STATUS_ORDER)))
+  })
+})
+
+describe("task popup links (CV-25)", () => {
+  const here = new URL("http://localhost:8484/projects/vela/tasks/vela-board.base")
+  const u = (p: string) => new URL(p, here)
+  test("a task note opens in the popup", () => {
+    assert.strictEqual(opensInPopup(u("vela-92-communication-notifications"), here), true)
+  })
+  test("the board itself, another board, files and other sites do not", () => {
+    assert.strictEqual(opensInPopup(u("vela-board.base"), here), false)
+    assert.strictEqual(opensInPopup(u("../../alon-app/tasks/alon-app-board.base"), here), false)
+    assert.strictEqual(opensInPopup(u("diagram.png"), here), false)
+    assert.strictEqual(opensInPopup(new URL("https://example.com/x"), here), false)
   })
 })

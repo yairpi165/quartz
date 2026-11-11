@@ -192,6 +192,8 @@ function createRouter() {
     })
 
     window.addEventListener("popstate", (event) => {
+      // the board's task popup (TaskPopup.tsx) handles back/forward over its own history entries
+      if ((window as any).__boardsPopstate?.(event)) return
       const { url } = getOpts(event) ?? {}
       if (window.location.hash && window.location.pathname === url?.pathname) return
       navigate(new URL(window.location.toString()), true)

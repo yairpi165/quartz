@@ -85,6 +85,7 @@ $boardsSidebarWidth: 220px;
       }
       & h1 {
         margin-top: 0;
+        margin-bottom: 0;
       }
     }
     @media all and not ($mobile) {
@@ -119,13 +120,16 @@ $boardsSidebarWidth: 220px;
 }
 
 // Kanban: every column in one row, side by side. A grid row (not flex) so every column is always as
-// tall as the board, however few cards it holds. Columns share the width equally and shrink down to
-// 240px; below that the board scrolls horizontally inside its own container, never clipped. Wrapping
-// was rejected: a tall column pushed the next row thousands of pixels down.
+// tall as the board, however few cards it holds. The board scrolls horizontally inside its own
+// container, never clipped. Wrapping was rejected: a tall column pushed the next row thousands of pixels
+// down.
 .bases-board {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(240px, 1fr);
+  // one fixed width for every column (CV-25): with `1fr` a board with fewer columns, or a closed sidebar,
+  // stretched them. Every status always has a column (BoardsDecor adds the empty ones).
+  grid-auto-columns: 17rem;
+  gap: 0.75rem;
   grid-template-rows: minmax(0, 1fr);
   overflow-x: auto;
 }
@@ -246,5 +250,26 @@ $boardsSidebarWidth: 220px;
       overscroll-behavior-x: auto;
       overscroll-behavior-y: contain;
     }
+  }
+}
+
+// Breathing room between the title, the view tabs and the board (CV-25: they were packed together), and
+// tabs big enough to tap on a phone.
+.bases-page {
+  gap: 1rem;
+}
+.bases-view-tabs {
+  margin-top: 0.85rem;
+  gap: 0.5rem;
+
+  & button {
+    min-height: 2.1rem;
+    padding: 0.3rem 0.95rem;
+  }
+}
+// the sidebar: a little more air between the site name, search and the board list
+.page > #quartz-body .sidebar.left {
+  @media all and not ($mobile) {
+    gap: 1.1rem;
   }
 }

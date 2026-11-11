@@ -21,6 +21,26 @@ export function columnStatus(text: string): string {
   const s = text.trim().toLowerCase()
   return s === "qa סימולטור" ? "sim-qa" : s
 }
+// Every status column a board always shows, in board order (the bases formula `status_order`; CV-25).
+// bases-page only builds a column for a status that has tasks, so the script adds empty ones for the rest
+// and the columns never jump around or change width.
+export const STATUS_ORDER = ["backlog", "todo", "in-progress", "in-review", "sim-qa", "qa", "reopened", "done"]
+// For each missing status: the present status it goes in front of (null = at the end). Empty when the
+// board is not a status board (a column that is not a known status).
+// Self-contained (the order is passed in) because the script embeds it with toString().
+export function missingColumns(
+  present: string[],
+  order: string[],
+): { status: string; before: string | null }[] {
+  if (!present.length || present.some((s) => !order.includes(s))) return []
+  return order.filter((s) => !present.includes(s)).map((status) => {
+    const i = order.indexOf(status)
+    const next = present
+      .filter((p) => order.indexOf(p) > i)
+      .sort((a, b) => order.indexOf(a) - order.indexOf(b))[0]
+    return { status, before: next ?? null }
+  })
+}
 // The count line on a sim-qa card: what is left for the simulator and for Yair's device.
 export function simBadge(sim: number, device: number): string {
   return "[sim] " + sim + " / [device] " + device
@@ -66,6 +86,38 @@ if (!window.__boardsDecor) {
       if (key === "model") row.dataset.model = val.textContent.trim().toLowerCase()
       if (key === "kind") row.dataset.kind = ${kindOf.toString()}(val.textContent)
       if (key === "priority") row.dataset.priority = val.textContent.trim().toLowerCase()
+    })
+  }
+  // add the empty status columns (an in-place refresh drops them; run() adds them back)
+  const fill = () => {
+    document.querySelectorAll(".bases-board").forEach((board) => {
+      const cols = Array.from(board.querySelectorAll(":scope > .bases-board-column"))
+      const byStatus = {}
+      cols.forEach((c) => {
+        const n = c.querySelector(".bases-board-column-header span")
+        if (n) byStatus[${columnStatus.toString()}(n.textContent)] = c
+      })
+      ;(${missingColumns.toString()})(Object.keys(byStatus), ${JSON.stringify(STATUS_ORDER)}).forEach(({ status, before }) => {
+        const col = document.createElement("div")
+        col.className = "bases-board-column boards-empty-column"
+        const head = document.createElement("div")
+        head.className = "bases-board-column-header"
+        const name = document.createElement("span")
+        name.textContent = status === "sim-qa" ? ${JSON.stringify(SIM_QA_LABEL)} : status
+        const count = document.createElement("span")
+        count.className = "bases-board-count"
+        count.textContent = "0"
+        head.append(name, count)
+        const body = document.createElement("div")
+        body.className = "bases-board-column-body"
+        const hint = document.createElement("div")
+        hint.className = "boards-empty-hint"
+        hint.textContent = "אין משימות"
+        body.appendChild(hint)
+        col.append(head, body)
+        board.insertBefore(col, before ? byStatus[before] : null)
+        byStatus[status] = col
+      })
     })
   }
   const columns = () => {
@@ -189,6 +241,7 @@ if (!window.__boardsDecor) {
   }
   const run = () => {
     cards()
+    fill()
     columns()
     tables()
     bidi()
@@ -333,6 +386,30 @@ BoardsDecor.css = `
   text-overflow: ellipsis;
 }
 
+/* card title: plain bold text (not Quartz's highlighted link box); the whole card opens the task popup */
+.bases-board-card { cursor: pointer; gap: 0.6rem; transition: border-color 0.15s ease; }
+.bases-board-card:hover { border-color: var(--secondary); }
+.bases-board-card > a.internal {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  color: var(--dark);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.bases-board-card > a.internal:hover { color: var(--secondary); }
+
+/* an empty status column: same frame, a quiet hint instead of cards */
+.boards-empty-hint {
+  margin: 0.25rem 0;
+  padding: 1.25rem 0.5rem;
+  border: 1px dashed var(--lightgray);
+  border-radius: 10px;
+  color: var(--gray);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
 /* columns: what waits for you stands out, finished work is quiet */
 .bases-board-column[data-status="qa"] {
   border-color: var(--secondary);
@@ -369,22 +446,22 @@ BoardsDecor.css = `
 .bases-view-meta { display: none; }
 .boards-nowrap { white-space: nowrap; }
 
-/* task page: the note properties as a row of small tags instead of a boxed table */
-.center .note-properties { margin: 0.4rem 0 0.8rem; border: 0 !important; background: none !important; }
-.center .note-properties-header { display: none !important; }
-.center .note-properties-table,
-.center .note-properties-table tbody { display: flex; flex-wrap: wrap; gap: 0.4rem; width: auto; border: 0 !important; }
-.center .note-properties-row { display: inline-flex; border: 0; }
-.center .note-properties-row td { padding: 0; border: 0; }
-.center .note-properties-row[data-value=""] { display: none; }
-.center .note-properties-row[data-key="status"] .note-properties-key,
-.center .note-properties-row[data-key="priority"] .note-properties-key,
-.center .note-properties-row[data-key="owner"] .note-properties-key,
-.center .note-properties-row[data-key="effort"] .note-properties-key { display: none; }
-.center .note-properties-row[data-key="status"] .note-properties-value,
-.center .note-properties-row[data-key="priority"] .note-properties-value,
-.center .note-properties-row[data-key="owner"] .note-properties-value,
-.center .note-properties-row[data-key="effort"] .note-properties-value {
+/* task page and task popup: the note properties as a row of small tags instead of a boxed table */
+:is(.center, .boards-task-content) .note-properties { margin: 0.4rem 0 0.8rem; border: 0 !important; background: none !important; }
+:is(.center, .boards-task-content) .note-properties-header { display: none !important; }
+:is(.center, .boards-task-content) .note-properties-table,
+:is(.center, .boards-task-content) .note-properties-table tbody { display: flex; flex-wrap: wrap; gap: 0.4rem; width: auto; border: 0 !important; }
+:is(.center, .boards-task-content) .note-properties-row { display: inline-flex; border: 0; }
+:is(.center, .boards-task-content) .note-properties-row td { padding: 0; border: 0; }
+:is(.center, .boards-task-content) .note-properties-row[data-value=""] { display: none; }
+:is(.center, .boards-task-content) .note-properties-row[data-key="status"] .note-properties-key,
+:is(.center, .boards-task-content) .note-properties-row[data-key="priority"] .note-properties-key,
+:is(.center, .boards-task-content) .note-properties-row[data-key="owner"] .note-properties-key,
+:is(.center, .boards-task-content) .note-properties-row[data-key="effort"] .note-properties-key { display: none; }
+:is(.center, .boards-task-content) .note-properties-row[data-key="status"] .note-properties-value,
+:is(.center, .boards-task-content) .note-properties-row[data-key="priority"] .note-properties-value,
+:is(.center, .boards-task-content) .note-properties-row[data-key="owner"] .note-properties-value,
+:is(.center, .boards-task-content) .note-properties-row[data-key="effort"] .note-properties-value {
   padding: 0 0.65rem;
   border-radius: 999px;
   background: var(--lightgray);
@@ -392,11 +469,11 @@ BoardsDecor.css = `
   font-size: 0.8rem;
   line-height: 1.7;
 }
-.center .note-properties-row[data-key="status"][data-value="done"] .note-properties-value { background: #2e9d57; color: #fff; }
-.center .note-properties-row[data-key="status"][data-value="sim-qa"] .note-properties-value { background: #3a9d8f; color: #fff; }
-.center .note-properties-row[data-key="status"][data-value="qa"] .note-properties-value { background: var(--secondary); color: var(--light); }
-.center .note-properties-row[data-key="priority"][data-value="highest"] .note-properties-value { background: #d64545; color: #fff; }
-.center .note-properties-row[data-key="priority"][data-value="high"] .note-properties-value { background: #e8863a; color: #fff; }
+:is(.center, .boards-task-content) .note-properties-row[data-key="status"][data-value="done"] .note-properties-value { background: #2e9d57; color: #fff; }
+:is(.center, .boards-task-content) .note-properties-row[data-key="status"][data-value="sim-qa"] .note-properties-value { background: #3a9d8f; color: #fff; }
+:is(.center, .boards-task-content) .note-properties-row[data-key="status"][data-value="qa"] .note-properties-value { background: var(--secondary); color: var(--light); }
+:is(.center, .boards-task-content) .note-properties-row[data-key="priority"][data-value="highest"] .note-properties-value { background: #d64545; color: #fff; }
+:is(.center, .boards-task-content) .note-properties-row[data-key="priority"][data-value="high"] .note-properties-value { background: #e8863a; color: #fff; }
 
 /* task page */
 .boards-dup-title { display: none; }

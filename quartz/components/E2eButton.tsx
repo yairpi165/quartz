@@ -137,7 +137,7 @@ E2eButton.css = `
 .boards-e2e-button {
   position: fixed;
   top: 0.75rem;
-  inset-inline-start: 8.2rem;
+  inset-inline-start: 8.8rem; /* QA button: 3.4rem + 4.9rem min width + 0.5rem gap */
   z-index: 10;
   height: 2.2rem;
   padding: 0 0.7rem;
@@ -153,8 +153,8 @@ E2eButton.css = `
 .boards-e2e-button[hidden] { display: none; }
 .boards-e2e-button:hover { color: var(--secondary); border-color: var(--secondary); }
 .boards-e2e-count {
-  margin-inline-start: 0.4rem;
-  padding: 0.1rem 0.4rem;
+  margin-inline-start: 0.45rem;
+  padding: 0.1rem 0.45rem;
   border-radius: 999px;
   background: var(--secondary);
   color: var(--light);

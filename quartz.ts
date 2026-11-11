@@ -5,6 +5,7 @@ import SidebarToggle from "./quartz/components/SidebarToggle"
 import QaButton from "./quartz/components/QaButton"
 import BoardsDecor from "./quartz/components/BoardsDecor"
 import E2eButton from "./quartz/components/E2eButton"
+import TaskPopup from "./quartz/components/TaskPopup"
 
 const config = await loadQuartzConfig()
 
@@ -18,6 +19,7 @@ const sidebarToggle = SidebarToggle()
 const qaButton = QaButton()
 const boardsDecor = BoardsDecor()
 const e2eButton = E2eButton()
+const taskPopup = TaskPopup()
 for (const [pageType, pageLayout] of Object.entries(layout.byPageType)) {
   if (pageType === "404") continue
   // page types share the defaults' header array; build a new one per page type
@@ -27,6 +29,7 @@ for (const [pageType, pageLayout] of Object.entries(layout.byPageType)) {
     qaButton,
     e2eButton,
     boardsDecor,
+    taskPopup,
   ]
   // a page type without its own `left` falls back to the defaults, which get it below
   if (pageLayout.left) pageLayout.left = [...pageLayout.left, boardsNav]
@@ -38,6 +41,7 @@ layout.defaults.header = [
   qaButton,
   e2eButton,
   boardsDecor,
+  taskPopup,
 ]
 config.plugins.emitters = config.plugins.emitters.map((emitter) =>
   emitter.name === "PageTypeDispatcher"
