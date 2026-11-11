@@ -53,6 +53,17 @@ if (!window.__boardsDecor) {
           span.textContent = id
         }
       }
+      if (key === "epic") {
+        // the tag shows only the epic id (VELA-202); the full name stays in the hover title
+        const a = val.querySelector("a") || val.querySelector(".bases-text") || val
+        const text = a.textContent.trim()
+        const id = idOf(text)
+        if (id) {
+          if (!val.title) val.title = text
+          a.textContent = id
+        }
+      }
+      if (key === "model") row.dataset.model = val.textContent.trim().toLowerCase()
       if (key === "kind") row.dataset.kind = ${kindOf.toString()}(val.textContent)
       if (key === "priority") row.dataset.priority = val.textContent.trim().toLowerCase()
     })
@@ -187,6 +198,22 @@ if (!window.__boardsDecor) {
     fades()
     requestAnimationFrame(fades)
   }
+  // A sideways wheel / trackpad swipe (or shift + wheel) over the cards must move the whole board. The
+  // browser latches the gesture to the column body (it scrolls vertically) and drops the horizontal part,
+  // so route it to the board by hand.
+  document.addEventListener(
+    "wheel",
+    (e) => {
+      if (e.ctrlKey || !e.target.closest) return
+      const board = e.target.closest(".bases-board")
+      if (!board) return
+      const dx = e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX
+      if (!dx || (!e.shiftKey && Math.abs(e.deltaX) <= Math.abs(e.deltaY))) return
+      e.preventDefault()
+      board.scrollLeft += dx
+    },
+    { passive: false },
+  )
   document.addEventListener("nav", run)
   window.addEventListener("resize", fades)
   run()
@@ -195,12 +222,23 @@ if (!window.__boardsDecor) {
 
 BoardsDecor.css = `
 /* cards: id + priority tag on one line, no English labels, no owner */
+/* tags sit in a 3-column, 2-row matrix of equal cells: id | priority | model on the first row, bug | epic on
+   the second. A card without a
+   bug (or without an epic) closes the gap by moving the other tag into the first column. */
 .bases-board-card-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 1.5rem;
+  align-items: stretch;
+  gap: 0.35rem 0.3rem;
 }
+.bases-board-card-meta > .bases-board-card-row { min-width: 0; }
+.bases-board-card-meta > [data-prop="name"] { grid-area: 1 / 1; }
+.bases-board-card-meta > [data-prop="priority"] { grid-area: 1 / 2; }
+.bases-board-card-meta > [data-prop="model"] { grid-area: 1 / 3; }
+.bases-board-card-meta > [data-prop="kind"] { grid-area: 2 / 1; }
+.bases-board-card-meta > [data-prop="epic"] { grid-area: 2 / 2; }
+.bases-board-card-meta:not(:has(> [data-prop="kind"][data-kind="bug"])) > [data-prop="epic"] { grid-area: 2 / 1; }
 .bases-board-card-row[data-prop="owner"] { display: none; }
 .bases-board-card-row[data-prop="name"] .bases-board-card-label,
 .bases-board-card-row[data-prop="priority"] .bases-board-card-label { display: none; }
@@ -235,6 +273,64 @@ BoardsDecor.css = `
   color: #d64545;
   font-size: 0.72rem;
   line-height: 1.5;
+}
+
+/* epic: the name of the card's epic as a small pink outline tag (same shape as the bug tag); the row is
+   absent from the HTML when the task has no epic */
+.bases-board-card-row[data-prop="epic"] { display: block; }
+.bases-board-card-row[data-prop="epic"] .bases-board-card-label { display: none; }
+.bases-board-card-row[data-prop="epic"] .bases-board-card-value {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: top;
+  padding: 0 0.55rem;
+  border: 1px solid #e0569f;
+  border-radius: 999px;
+  color: #e0569f;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+.bases-board-card-row[data-prop="epic"] .bases-board-card-value a {
+  color: inherit;
+  background: none;
+  text-decoration: none;
+}
+
+/* model: the model the task is meant for (opus / sonnet), a small outline tag; absent when unset */
+.bases-board-card-row[data-prop="model"] { display: block; }
+.bases-board-card-row[data-prop="model"] .bases-board-card-label { display: none; }
+.bases-board-card-row[data-prop="model"] .bases-board-card-value {
+  display: inline-block;
+  padding: 0 0.55rem;
+  border: 1px solid #8a7ee0;
+  border-radius: 999px;
+  color: #8a7ee0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+.bases-board-card-row[data-prop="model"][data-model="sonnet"] .bases-board-card-value { border-color: #3fb5a8; color: #3fb5a8; }
+
+/* every cell of the tag matrix is the same size; the text is centred and cut with an ellipsis, never wrapped */
+.bases-board-card-meta > .bases-board-card-row .bases-board-card-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 0 0.15rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.68rem;
+  line-height: 1;
+}
+.bases-board-card-meta > .bases-board-card-row .bases-board-card-value .bases-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* columns: what waits for you stands out, finished work is quiet */
