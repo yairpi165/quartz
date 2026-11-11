@@ -244,7 +244,8 @@ QaButton.css = `
 .boards-qa-button {
   position: fixed;
   top: 0.75rem;
-  inset-inline-start: 3.4rem;
+  /* above the board title: custom.scss sets --boards-buttons-start from the sidebar state */
+  inset-inline-start: var(--boards-buttons-start, 3.5rem);
   z-index: 10;
   /* wide enough for "QA" + a 2-digit count, so the E2E button next to it never touches it */
   min-width: 4.9rem;

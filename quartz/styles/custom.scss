@@ -29,7 +29,7 @@ $boardsSidebarWidth: 220px;
   & .sidebar.left {
     @media all and not ($mobile) {
       // room at the top for the fixed show/hide button
-      padding: 3.5rem 1rem 2rem 1rem;
+      padding: 4.25rem 1rem 2rem 1rem;
     }
     // mobile (sidebar opened by hand): a compact stack, the board list as chips (BoardsNav)
     @media all and ($mobile) {
@@ -79,7 +79,7 @@ $boardsSidebarWidth: 220px;
     // Quartz leaves 6rem above the title (+2rem on the h1), a wide empty band under the fixed buttons.
     // Start the title level with the sidebar's own title instead.
     & .page-header {
-      margin-top: 3.5rem;
+      margin-top: 4.25rem;
       @media all and ($mobile) {
         margin-top: 0.5rem;
       }
@@ -111,6 +111,18 @@ $boardsSidebarWidth: 220px;
       // keep the board clear of the fixed button
       padding-inline-start: 3.5rem;
     }
+  }
+}
+
+// The QA and E2E buttons sit above the board title (CV-25): at the start of the center column, so with the
+// sidebar open they move past it, and with it closed (or on a phone) they sit next to the show/hide
+// button, where the title starts too.
+:root {
+  --boards-buttons-start: 3.5rem;
+}
+@media all and not ($mobile) {
+  :root:not([data-boards-sidebar="collapsed"]) {
+    --boards-buttons-start: calc(#{$boardsSidebarWidth} + 1.5rem);
   }
 }
 

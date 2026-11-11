@@ -137,7 +137,8 @@ E2eButton.css = `
 .boards-e2e-button {
   position: fixed;
   top: 0.75rem;
-  inset-inline-start: 8.8rem; /* QA button: 3.4rem + 4.9rem min width + 0.5rem gap */
+  /* right after the QA button: its start + its 4.9rem min width + a 0.5rem gap */
+  inset-inline-start: calc(var(--boards-buttons-start, 3.5rem) + 5.4rem);
   z-index: 10;
   height: 2.2rem;
   padding: 0 0.7rem;
