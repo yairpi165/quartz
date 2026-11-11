@@ -44,7 +44,9 @@ if (!window.__boardsQa) {
   const setCount = (n) => {
     document.querySelectorAll(".boards-qa-count").forEach((b) => {
       b.textContent = String(n)
-      b.hidden = !n
+      b.hidden = false
+      const btn = b.closest(".boards-qa-button")
+      if (btn) btn.classList.toggle("boards-zero", !n)
     })
   }
   const refreshCount = () => api("/api/qa").then((d) => setCount(scoped(d.tasks).length)).catch(() => {})
@@ -83,7 +85,7 @@ if (!window.__boardsQa) {
     }
     const parts = rest.split(/(?:^|\\s)(?=\\d+\\)\\s)/).map((s) => s.trim()).filter(Boolean)
     if (parts.length < 2) {
-      const one = stepNode(rest)
+      const one = stepNode(rest.replace(/^\\d+\\)\\s*/, ""))
       while (one.firstChild) li.appendChild(one.firstChild)
       return li
     }
@@ -97,7 +99,17 @@ if (!window.__boardsQa) {
     const c = el("section", "qa-card")
     const head = el("h4", "qa-task-title")
     head.appendChild(el("span", "qa-id", task.id))
-    head.appendChild(document.createTextNode(" " + task.title))
+    // on the task's own board the title opens the task popup (the API has no file path; the board card has)
+    const cardLink = Array.from(document.querySelectorAll(".bases-board-card")).find((cd) => {
+      const n = cd.querySelector('.bases-board-card-row[data-prop="name"]')
+      return n && (n.title || n.textContent).trim().startsWith(task.id + " ") || (n && n.textContent.trim() === task.id)
+    })
+    const href = cardLink && cardLink.querySelector(":scope > a[href]")
+    if (href) {
+      const a = el("a", "qa-title-link", " " + task.title)
+      a.href = href.href
+      head.appendChild(a)
+    } else head.appendChild(document.createTextNode(" " + task.title))
     c.appendChild(head)
     c.appendChild(el("div", "qa-label", "מה לבדוק"))
     const ul = el("ul", "qa-checks")
@@ -260,6 +272,14 @@ QaButton.css = `
   line-height: 1;
   cursor: pointer;
 }
+.boards-qa-button, .boards-e2e-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.9rem;
+}
+.boards-qa-button.boards-zero, .boards-e2e-button.boards-zero { opacity: 0.55; }
+.boards-qa-button.boards-zero .boards-qa-count, .boards-e2e-button.boards-zero .boards-e2e-count { background: var(--gray); }
 .boards-qa-button:hover { color: var(--secondary); border-color: var(--secondary); }
 .boards-qa-count {
   margin-inline-start: 0.45rem;
@@ -270,6 +290,9 @@ QaButton.css = `
   font-size: 0.75rem;
 }
 .qa-overlay {
+  /* hangs on <html>, outside <body>, so it inherits no font from the page */
+  font-family: var(--bodyFont);
+  color: var(--darkgray);
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -304,8 +327,22 @@ QaButton.css = `
 .qa-task-title { margin: 0 0 0.5rem; font-size: 1rem; }
 .qa-id { display: inline-block; padding: 0 0.4rem; border-radius: 4px; background: var(--highlight); color: var(--secondary); font-family: var(--codeFont); font-size: 0.85rem; direction: ltr; }
 .qa-label { font-size: 0.8rem; color: var(--gray); margin-bottom: 0.2rem; }
-.qa-checks { margin: 0 0 0.7rem; padding: 0; list-style: none; }
+.qa-checks { margin: 0 0 0.7rem; padding: 0; list-style: none; counter-reset: qa-check; }
 .qa-check { margin: 0 0 0.6rem; line-height: 1.55; }
+/* every check has its own numbered steps; a heading per check keeps "1, 2, 1, 2, 3" readable */
+.qa-check::before {
+  counter-increment: qa-check;
+  content: "בדיקה " counter(qa-check);
+  display: block;
+  margin-bottom: 0.15rem;
+  color: var(--gray);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.qa-checks > .qa-check:only-child::before { content: none; }
+.qa-check + .qa-check { padding-top: 0.6rem; border-top: 1px dashed var(--lightgray); }
+.qa-title-link { color: inherit; background: none; }
+.qa-title-link:hover { color: var(--secondary); text-decoration: underline; }
 .qa-tag { display: inline-block; margin-bottom: 0.3rem; padding: 0 0.5rem; border-radius: 999px; background: var(--highlight); color: var(--secondary); font-size: 0.78rem; }
 .qa-steps { margin: 0; padding-inline-start: 1.4rem; }
 .qa-step { margin: 0.35rem 0; }

@@ -7,6 +7,7 @@ import BoardsDecor, {
   SIM_QA_LABEL,
   STATUS_ORDER,
   missingColumns,
+  STATUS_LABELS,
 } from "./BoardsDecor"
 import { opensInPopup } from "./TaskPopup"
 
@@ -147,7 +148,8 @@ describe("BoardsDecor sim-qa column (CV-22)", () => {
     assert.strictEqual(simCol.dataset.status, "sim-qa")
     assert.strictEqual(simName.textContent, SIM_QA_LABEL)
     assert.strictEqual(qaCol.dataset.status, "qa")
-    assert.strictEqual(qaName.textContent, "qa")
+    // CV-26: every status column shows its Hebrew label
+    assert.strictEqual(qaName.textContent, STATUS_LABELS.qa)
     assert.deepStrictEqual(fetched, ["/api/sim"])
     assert.strictEqual(card.added.length, 1)
     assert.strictEqual(card.added[0].textContent, "[sim] 2 / [device] 1")
@@ -228,5 +230,14 @@ describe("task popup links (CV-25)", () => {
     assert.strictEqual(opensInPopup(u("../../alon-app/tasks/alon-app-board.base"), here), false)
     assert.strictEqual(opensInPopup(u("diagram.png"), here), false)
     assert.strictEqual(opensInPopup(new URL("https://example.com/x"), here), false)
+  })
+})
+
+describe("status labels (CV-26)", () => {
+  test("a label maps back to its status, so a second run keeps the column tagged", () => {
+    for (const [status, label] of Object.entries(STATUS_LABELS)) {
+      assert.strictEqual(columnStatus(label, STATUS_LABELS), status)
+      assert.strictEqual(columnStatus(status, STATUS_LABELS), status)
+    }
   })
 })

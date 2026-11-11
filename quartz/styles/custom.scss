@@ -136,17 +136,45 @@ $boardsSidebarWidth: 220px;
 // container, never clipped. Wrapping was rejected: a tall column pushed the next row thousands of pixels
 // down.
 .bases-board {
-  display: grid;
-  grid-auto-flow: column;
-  // one fixed width for every column (CV-25): with `1fr` a board with fewer columns, or a closed sidebar,
-  // stretched them. Every status always has a column (BoardsDecor adds the empty ones).
-  grid-auto-columns: 17rem;
+  display: flex;
+  align-items: stretch;
   gap: 0.75rem;
-  grid-template-rows: minmax(0, 1fr);
   overflow-x: auto;
 }
+// one fixed width for every column (CV-25): with `1fr` a board with fewer columns, or a closed sidebar,
+// stretched them. Every status always has a column (BoardsDecor adds the empty ones), but an empty one
+// folds to a narrow strip with its name written down the side (CV-26), so a small board does not open
+// on a wall of empty columns.
 .bases-board-column {
+  flex: 0 0 17rem;
   min-width: 0;
+}
+.bases-board-column.boards-empty-column {
+  flex-basis: 3rem;
+
+  & .bases-board-column-header {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.6rem;
+    height: 100%;
+    padding: 0.75rem 0;
+    border-bottom: 0;
+    border-radius: 12px;
+    color: var(--gray);
+    font-weight: 500;
+
+    // count on top, the name written down the strip under it
+    & > span:first-child {
+      order: 1;
+      writing-mode: vertical-rl;
+      white-space: nowrap;
+    }
+  }
+
+  & .bases-board-column-body {
+    display: none;
+  }
 }
 .bases-board-card {
   overflow-wrap: anywhere;
@@ -160,8 +188,10 @@ $boardsSidebarWidth: 220px;
 // column to column.
 @media all and ($mobile) {
   .bases-board {
-    grid-auto-columns: min(80%, 24rem);
     scroll-snap-type: x mandatory;
+  }
+  .bases-board-column {
+    flex-basis: min(80%, 24rem);
   }
   // Middle columns snap to the centre (a sliver of both neighbours peeks in); the first and last stay
   // flush with their edge, since a scroller cannot centre them.
@@ -176,6 +206,10 @@ $boardsSidebarWidth: 220px;
       scroll-snap-align: end;
     }
   }
+  // a folded empty column is only a strip; swiping never stops on it
+  .bases-board-column.boards-empty-column {
+    scroll-snap-align: none;
+  }
 }
 
 // Kanban fills the window and each column scrolls on its own (CV-13), on desktop and phone alike: a page
@@ -183,7 +217,10 @@ $boardsSidebarWidth: 220px;
 // the height, every column header (name + count) is pinned and only the cards scroll. On a phone the
 // board also swipes sideways between columns, and an open sidebar is capped so the board keeps room.
 @media all {
-  body:has(.bases-view.is-active .bases-board) {
+  // tables get the same lock (CV-26): title and tabs stay, the table scrolls in its own box, so its
+  // header row can stay on top
+  body:has(.bases-view.is-active .bases-board),
+  body:has(.bases-view.is-active .bases-table-wrapper) {
     overflow: hidden;
 
     & .page {
@@ -242,6 +279,17 @@ $boardsSidebarWidth: 220px;
       overflow-y: hidden;
     }
 
+    & .bases-table-wrapper {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+
+    & .bases-table thead th {
+      z-index: 2;
+    }
+
     & .bases-board-column {
       display: flex;
       flex-direction: column;
@@ -286,6 +334,9 @@ $boardsSidebarWidth: 220px;
     overflow-x: auto;
     margin-inline: -0.75rem;
     padding-inline: 0.75rem;
+    // a soft edge on both sides says the row goes on
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%);
 
     & button {
       flex: none;

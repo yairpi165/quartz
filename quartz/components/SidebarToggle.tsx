@@ -21,12 +21,13 @@ function SidebarToggle({ displayClass }: QuartzComponentProps) {
 }
 
 // Before first paint, so a reload does not flash the sidebar open. With no saved choice the sidebar is
-// open on a wide screen and closed on a phone, where it would cover most of the first screen.
+// open on a wide screen and closed on a phone or a laptop/tablet up to 1200px (CV-26), where it would
+// cover most of the first screen or a quarter of the board.
 SidebarToggle.beforeDOMLoaded = `
 {
   let stored = null
   try { stored = localStorage.getItem("${STORAGE_KEY}") } catch (e) {}
-  const collapsed = stored ? stored === "collapsed" : window.matchMedia("(max-width: 800px)").matches
+  const collapsed = stored ? stored === "collapsed" : window.matchMedia("(max-width: 1200px)").matches
   if (collapsed) document.documentElement.setAttribute("data-boards-sidebar", "collapsed")
 }
 `

@@ -58,18 +58,12 @@ if (!window.__boardsTaskPopup) {
       if (h && !h.startsWith("#")) a.setAttribute("href", new URL(h, url).href)
     })
     root.querySelectorAll("[src]").forEach((n) => n.setAttribute("src", new URL(n.getAttribute("src"), url).href))
-    root.querySelectorAll("p, li, blockquote, h1, h2, h3, h4").forEach((n) => {
+    root.querySelectorAll("p, li, blockquote").forEach((n) => {
       if (!n.hasAttribute("dir")) n.setAttribute("dir", "auto")
     })
-    root.querySelectorAll(".note-properties").forEach((d) => {
-      d.open = true
-      d.querySelectorAll(".note-properties-row").forEach((r) => {
-        const k = r.querySelector(".note-properties-key")
-        const v = r.querySelector(".note-properties-text")
-        if (k) r.dataset.key = k.textContent.trim().toLowerCase()
-        if (v) r.dataset.value = v.textContent.trim().toLowerCase()
-      })
-    })
+    // same tags as the task page (BoardsDecor: status label, "מאמץ: L")
+    if (window.__boardsTagProps) window.__boardsTagProps(root)
+    if (window.__boardsEmptySections) window.__boardsEmptySections(root)
   }
 
   const load = (href) => {
@@ -159,6 +153,17 @@ if (!window.__boardsTaskPopup) {
         e.preventDefault()
         e.stopPropagation()
         open(url.href)
+        return
+      }
+      const listLink = t.closest(".qa-overlay a[href]")
+      if (listLink) {
+        const u = new URL(listLink.href, location.href)
+        if (!opensInPopup(u, new URL(location.href))) return
+        e.preventDefault()
+        e.stopPropagation()
+        // the QA / E2E popup closes on Escape
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+        open(u.href)
         return
       }
       if (!onBoard()) return
@@ -268,6 +273,7 @@ html.boards-task-open, html.boards-task-open body { overflow: hidden; }
 .boards-task-body article h1 { margin: 0.25rem 0 0.75rem; font-size: 1.6rem; }
 .boards-task-body article > :first-child { margin-top: 0; }
 .boards-task-status { color: var(--gray); }
+.boards-task-content .boards-empty-section { display: none; }
 /* the overlay hangs on <html>, outside <body> and .page, so it inherits none of their type rules */
 .boards-task-overlay { font-family: var(--bodyFont); color: var(--darkgray); }
 .boards-task-content :is(h1, h2, h3, h4) { font-family: var(--headerFont); color: var(--dark); }

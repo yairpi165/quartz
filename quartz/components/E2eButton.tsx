@@ -1,5 +1,6 @@
 import { QuartzComponentConstructor, QuartzComponentProps } from "./types"
 import { classNames } from "../util/lang"
+import { STATUS_LABELS } from "./BoardsDecor"
 
 // E2E regressions (CV-18): a button next to the QA button opens a read-only popup with every open task
 // marked `found_by: e2e` on this board. The tasks stay in their own column (usually backlog); the popup
@@ -30,6 +31,7 @@ if (!window.__boardsE2e) {
     return n
   }
   const slug = (s) => s.trim().replace(/\\s+/g, "-").replace(/[?#]/g, "").toLowerCase()
+  const LABELS = ${JSON.stringify(STATUS_LABELS)}
   const PRIO = { highest: "הכי גבוהה", high: "גבוהה", medium: "בינונית", low: "נמוכה", lowest: "הכי נמוכה" }
   // On a board page only that board's tasks; anywhere else (home, a note) all boards'.
   const scoped = (tasks) => {
@@ -46,7 +48,9 @@ if (!window.__boardsE2e) {
   }
   const setCount = (n) => {
     document.querySelectorAll(".boards-e2e-button").forEach((b) => {
-      b.hidden = !n
+      // always shown (the top bar keeps one shape on every board); nothing to look at -> dimmed
+      b.hidden = false
+      b.classList.toggle("boards-zero", !n)
       const c = b.querySelector(".boards-e2e-count")
       if (c) c.textContent = String(n)
     })
@@ -70,7 +74,7 @@ if (!window.__boardsE2e) {
     c.appendChild(head)
     const meta = el("div", "e2e-meta")
     meta.appendChild(el("span", "e2e-prio e2e-prio-" + t.priority, "עדיפות: " + (PRIO[t.priority] || t.priority || "—")))
-    meta.appendChild(el("span", "e2e-status", "סטטוס: " + t.status))
+    meta.appendChild(el("span", "e2e-status", "סטטוס: " + (LABELS[t.status] || t.status)))
     c.appendChild(meta)
     return c
   }
@@ -166,7 +170,8 @@ E2eButton.css = `
 .e2e-link { color: inherit; text-decoration: none; }
 .e2e-link:hover { color: var(--secondary); text-decoration: underline; }
 .e2e-meta { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; font-size: 0.85rem; color: var(--darkgray); }
-.e2e-prio-highest, .e2e-prio-high { color: #d64545; font-weight: 600; }
+.e2e-prio-highest { color: #d64545; font-weight: 600; }
+.e2e-prio-high { color: #e8863a; font-weight: 600; }
 `
 
 export default (() => E2eButton) satisfies QuartzComponentConstructor
