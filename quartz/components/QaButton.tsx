@@ -393,9 +393,9 @@ QaButton.css = `
 .qa-expect b { color: var(--secondary); }
 .qa-nocheck { color: var(--gray); }
 /* the verdict buttons stay in view while a long card scrolls past */
-/* the verdict buttons stay in view; the reason box does not, so it never covers the checks above it */
-.qa-card > .qa-actions { position: sticky; bottom: 0; padding: 0.5rem 0 0.1rem; background: var(--light); }
-.qa-card > .qa-failbox { padding: 0.5rem 0 0.1rem; }
+/* the verdict buttons close each task's frame; not sticky (a sticky row floated the next task's buttons
+   over the list before that task was in view) */
+.qa-card > .qa-actions, .qa-card > .qa-failbox { padding: 0.75rem 0 0; }
 .qa-actions { display: flex; gap: 0.6rem; }
 .qa-actions[hidden], .qa-failbox[hidden] { display: none; }
 .qa-actions button, .qa-send, .qa-cancel {
