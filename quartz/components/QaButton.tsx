@@ -338,14 +338,15 @@ QaButton.css = `
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  padding-inline: 1.25rem 0.75rem;
+  gap: 1rem;
+  padding-block: 1rem;
+  padding-inline: 1.5rem 1rem;
   border-bottom: 1px solid var(--lightgray);
 }
 /* Only the task list scrolls; the heading and close button stay put. */
-.qa-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0.25rem 1.5rem 1.5rem; }
-.qa-heading { margin: 0; font-size: 1.1rem; }
-.qa-progress { margin-inline-start: 0.7rem; font-size: 0.85rem; font-weight: 400; color: var(--gray); }
+.qa-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0.5rem 1.5rem 1.5rem; }
+.qa-heading { display: flex; align-items: baseline; gap: 0.75rem; margin: 0; font-size: 1.25rem; }
+.qa-progress { font-size: 0.85rem; font-weight: 400; color: var(--gray); }
 .qa-close, .boards-task-close {
   display: grid;
   place-items: center;
@@ -420,7 +421,7 @@ QaButton.css = `
 @media (max-width: 800px) {
   .qa-overlay { padding: 0; align-items: stretch; }
   .qa-dialog { width: 100%; height: 100%; max-height: none; border-radius: 0; border: 0; padding-bottom: env(safe-area-inset-bottom); }
-  .qa-top { padding-top: max(0.6rem, env(safe-area-inset-top)); }
+  .qa-top { padding-top: max(1rem, env(safe-area-inset-top)); padding-inline: 1rem 0.75rem; }
   .qa-body { padding: 0.25rem 1rem 1.5rem; }
 }
 `
