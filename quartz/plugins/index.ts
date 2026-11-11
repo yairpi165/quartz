@@ -19,13 +19,14 @@ export function getStaticResourcesFromPlugins(ctx: BuildCtx) {
     if (res?.additionalHead) {
       staticResources.additionalHead.push(...res.additionalHead)
     }
+    if (res?.assets) {
+      ;(staticResources.assets ??= []).push(...res.assets)
+    }
   }
 
   // if serving locally, listen for rebuilds and reload the page
   if (ctx.argv.serve) {
-    const wsUrl = ctx.argv.remoteDevHost
-      ? `wss://${ctx.argv.remoteDevHost}:${ctx.argv.wsPort}`
-      : `ws://localhost:${ctx.argv.wsPort}`
+    const wsHost = ctx.argv.remoteDevHost || "localhost"
 
     staticResources.js.push({
       loadTime: "afterDOMReady",
@@ -44,8 +45,11 @@ export function getStaticResourcesFromPlugins(ctx: BuildCtx) {
             if (window.spaNavigate) window.spaNavigate(new URL(location.href), true).catch(hardReload)
             else hardReload()
           }
+          // the dev server speaks plain ws unless it sits behind a TLS proxy,
+          // so follow the page instead of assuming
+          const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:"
           const connect = () => {
-            const socket = new WebSocket('${wsUrl}')
+            const socket = new WebSocket(\`\${wsProtocol}//${wsHost}:${ctx.argv.wsPort}\`)
             socket.addEventListener('message', softRefresh)
             socket.addEventListener('open', () => {
               if (dropped) hardReload()
