@@ -363,9 +363,8 @@ QaButton.css = `
 .qa-close:hover { color: var(--secondary); border-color: var(--secondary); }
 .qa-area { display: flex; align-items: baseline; gap: 0.5rem; margin: 1.25rem 0 0.25rem; font-size: 1rem; color: var(--secondary); }
 .qa-area-count { color: var(--gray); font-size: 0.8rem; font-weight: 400; }
-/* one task after another, divided by a line (a framed card inside the framed popup ate the phone's width) */
-.qa-card { border: 0; border-bottom: 1px solid var(--lightgray); border-radius: 0; padding: 1rem 0; margin: 0; }
-.qa-card:last-child { border-bottom: 0; }
+/* every task in its own frame, so it is clear where one starts and ends (Yair rejected divider lines) */
+.qa-card { border: 1px solid var(--lightgray); border-radius: 10px; padding: 0.9rem 1rem; margin: 0.75rem 0; }
 .qa-task-title { margin: 0 0 0.5rem; font-size: 1rem; }
 .qa-id { display: inline-block; padding: 0 0.4rem; border-radius: 4px; background: var(--highlight); color: var(--secondary); font-family: var(--codeFont); font-size: 0.85rem; direction: ltr; }
 /* "מה לבדוק" said nothing the checks under it do not */
