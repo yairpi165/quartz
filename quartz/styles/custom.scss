@@ -147,8 +147,18 @@ $boardsSidebarWidth: 220px;
     grid-auto-columns: min(80%, 24rem);
     scroll-snap-type: x mandatory;
   }
+  // Middle columns snap to the centre (a sliver of both neighbours peeks in); the first and last stay
+  // flush with their edge, since a scroller cannot centre them.
   .bases-board-column {
-    scroll-snap-align: start;
+    scroll-snap-align: center;
+
+    &:first-child {
+      scroll-snap-align: start;
+    }
+
+    &:last-child {
+      scroll-snap-align: end;
+    }
   }
 }
 
@@ -230,7 +240,11 @@ $boardsSidebarWidth: 220px;
       flex: 1 1 0;
       min-height: 0;
       overflow-y: auto;
-      overscroll-behavior: contain;
+      // Vertical scroll stays inside the column, but a sideways wheel/trackpad swipe must chain out to
+      // the board (`contain` on both axes trapped it in the column).
+      overflow-x: hidden;
+      overscroll-behavior-x: auto;
+      overscroll-behavior-y: contain;
     }
   }
 }
