@@ -138,63 +138,6 @@ if (!window.__boardsDecor) {
       })
     })
   }
-  // phone column chips (CSS shows them only on a phone); rebuilt each run, an in-place refresh drops them
-  const colnav = () => {
-    document.querySelectorAll(".bases-board").forEach((board) => {
-      let nav = board.previousElementSibling
-      if (!nav || !nav.classList.contains("boards-colnav")) {
-        nav = document.createElement("div")
-        nav.className = "boards-colnav"
-        board.parentElement.insertBefore(nav, board)
-      }
-      const cols = Array.from(board.querySelectorAll(":scope > .bases-board-column:not(.boards-empty-column)"))
-      nav.replaceChildren(
-        ...cols.map((col) => {
-          const b = document.createElement("button")
-          b.type = "button"
-          b.dataset.status = col.dataset.status || ""
-          const name = col.querySelector(".bases-board-column-header span")
-          const count = col.querySelector(".bases-board-count")
-          b.append(document.createTextNode(name ? name.textContent : ""))
-          const c = document.createElement("span")
-          c.textContent = count ? count.textContent : ""
-          b.append(c)
-          b.addEventListener("click", () => {
-            const br = board.getBoundingClientRect()
-            const cr = col.getBoundingClientRect()
-            board.scrollBy({ left: cr.left + cr.width / 2 - (br.left + br.width / 2), behavior: "smooth" })
-          })
-          b.__col = col
-          return b
-        }),
-      )
-      const mark = () => {
-        const mid = board.getBoundingClientRect().left + board.clientWidth / 2
-        let best = null
-        let dist = Infinity
-        nav.querySelectorAll("button").forEach((b) => {
-          const r = b.__col.getBoundingClientRect()
-          const d = Math.abs(r.left + r.width / 2 - mid)
-          if (d < dist) {
-            dist = d
-            best = b
-          }
-        })
-        nav.querySelectorAll("button").forEach((b) => b.classList.toggle("is-current", b === best))
-        if (best && nav.scrollWidth > nav.clientWidth) {
-          const nr = nav.getBoundingClientRect()
-          const r = best.getBoundingClientRect()
-          if (r.left < nr.left || r.right > nr.right) nav.scrollBy({ left: r.left - nr.left - nr.width / 2 + r.width / 2 })
-        }
-      }
-      if (!board.__boardsColnav) {
-        board.__boardsColnav = true
-        board.addEventListener("scroll", () => requestAnimationFrame(() => board.__boardsMark && board.__boardsMark()), { passive: true })
-      }
-      board.__boardsMark = mark
-      mark()
-    })
-  }
   const columns = () => {
     document.querySelectorAll(".bases-board-column").forEach((col) => {
       const name = col.querySelector(".bases-board-column-header span")
@@ -593,7 +536,6 @@ if (!window.__boardsDecor) {
     fill()
     columns()
     doneCap()
-    colnav()
     tables()
     bidi()
     title()
@@ -754,38 +696,6 @@ BoardsDecor.css = `
 .bases-board-card { background: var(--light); }
 :root[saved-theme="dark"] .bases-board-card { background: color-mix(in srgb, var(--light) 90%, var(--dark)); }
 :root[saved-theme="dark"] .bases-board-column { background: color-mix(in srgb, var(--light) 95%, var(--dark)); }
-
-/* phone: a row of chips, one per column with cards, shows where you are and jumps to a column */
-.boards-colnav { display: none; }
-@media (max-width: 800px) {
-  .boards-colnav {
-    display: flex;
-    flex: none;
-    gap: 0.4rem;
-    margin: 0 -0.75rem 0.6rem;
-    padding: 0 0.75rem;
-    overflow-x: auto;
-    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%);
-    mask-image: linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%);
-  }
-  .boards-colnav button {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.25rem 0.7rem;
-    border: 1px solid var(--lightgray);
-    border-radius: 999px;
-    background: none;
-    color: var(--darkgray);
-    font: inherit;
-    font-size: 0.8rem;
-    white-space: nowrap;
-  }
-  .boards-colnav button span { color: var(--gray); font-size: 0.72rem; }
-  .boards-colnav button.is-current { border-color: var(--secondary); color: var(--secondary); }
-  .boards-colnav button[data-status="qa"] { font-weight: 600; }
-}
 
 /* card title: plain bold text (not Quartz's highlighted link box); the whole card opens the task popup */
 .bases-board-card { cursor: pointer; gap: 0.6rem; transition: border-color 0.15s ease; }
