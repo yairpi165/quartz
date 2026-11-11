@@ -467,8 +467,11 @@ if (!window.__boardsDecor) {
         const raw = r.dataset.raw !== undefined ? r.dataset.raw : v.textContent.trim().toLowerCase()
         r.dataset.raw = raw
         r.dataset.value = raw
-        if (r.dataset.key === "status" && LABELS[raw]) v.textContent = LABELS[raw]
-        if (r.dataset.key === "effort" && raw) v.textContent = "מאמץ: " + raw.toUpperCase()
+        // write only on change: the search-preview observer re-runs this on every mutation
+        let text = null
+        if (r.dataset.key === "status" && LABELS[raw]) text = LABELS[raw]
+        if (r.dataset.key === "effort" && raw) text = "מאמץ: " + raw.toUpperCase()
+        if (text !== null && v.textContent !== text) v.textContent = text
       })
     })
   }
@@ -482,11 +485,16 @@ if (!window.__boardsDecor) {
     tagProps(root)
   }
   if (typeof MutationObserver === "function") {
+    // childList only (our own writes are attribute changes or same-text no-ops), and once per frame
+    let pending = false
     new MutationObserver((muts) => {
-      muts.forEach((m) => {
-        const t = m.target
-        const box = t && t.closest ? t.closest(".preview-container") : null
-        if (box) preview(box)
+      if (pending) return
+      const box = muts.map((m) => m.target && m.target.closest && m.target.closest(".preview-container")).find(Boolean)
+      if (!box) return
+      pending = true
+      requestAnimationFrame(() => {
+        pending = false
+        preview(box)
       })
     }).observe(document.documentElement, { childList: true, subtree: true })
   }
