@@ -272,8 +272,10 @@ html.boards-task-open, html.boards-task-open body { overflow: hidden; }
 .boards-task-overlay { font-family: var(--bodyFont); color: var(--darkgray); }
 .boards-task-content :is(h1, h2, h3, h4) { font-family: var(--headerFont); color: var(--dark); }
 .boards-task-content :is(ul, ol) { padding-inline-start: 1.5rem; }
-.boards-task-content li:has(> input[type="checkbox"]) { list-style-type: none; }
-.boards-task-content ul.contains-task-list { padding-inline-start: 1.6rem; }
+/* an English task item is LTR inside an RTL list: indent the item itself (on its own start side), so the
+   checkbox, which hangs before the text, stays inside the panel */
+.boards-task-content ul.contains-task-list { padding-inline: 0; }
+.boards-task-content li:has(> input[type="checkbox"]) { list-style-type: none; padding-inline-start: 1.5rem; }
 .boards-task-content li:has(> input[type="checkbox"]:checked) {
   text-decoration: line-through;
   text-decoration-color: var(--gray);
