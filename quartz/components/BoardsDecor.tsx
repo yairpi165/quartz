@@ -620,7 +620,9 @@ if (!window.__boardsDecor) {
       const dx = e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX
       if (!dx || (!e.shiftKey && Math.abs(e.deltaX) <= Math.abs(e.deltaY))) return
       e.preventDefault()
-      board.scrollLeft += dx
+      // reversed on purpose (CV-26, Yair): on this RTL board the browser's direction felt backwards; the
+      // column order is unchanged, only the way a desktop swipe moves the board. Phone swipes stay native.
+      board.scrollLeft -= dx
     },
     { passive: false },
   )

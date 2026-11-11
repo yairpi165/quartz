@@ -142,39 +142,11 @@ $boardsSidebarWidth: 220px;
   overflow-x: auto;
 }
 // one fixed width for every column (CV-25): with `1fr` a board with fewer columns, or a closed sidebar,
-// stretched them. Every status always has a column (BoardsDecor adds the empty ones), but an empty one
-// folds to a narrow strip with its name written down the side (CV-26), so a small board does not open
-// on a wall of empty columns.
+// stretched them. Every status always has a full-width column (BoardsDecor adds the empty ones, with an
+// "אין משימות" hint); folding them to a strip was tried in CV-26 and rejected by Yair.
 .bases-board-column {
   flex: 0 0 17rem;
   min-width: 0;
-}
-.bases-board-column.boards-empty-column {
-  flex-basis: 3rem;
-
-  & .bases-board-column-header {
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 0.6rem;
-    height: 100%;
-    padding: 0.75rem 0;
-    border-bottom: 0;
-    border-radius: 12px;
-    color: var(--gray);
-    font-weight: 500;
-
-    // count on top, the name written down the strip under it
-    & > span:first-child {
-      order: 1;
-      writing-mode: vertical-rl;
-      white-space: nowrap;
-    }
-  }
-
-  & .bases-board-column-body {
-    display: none;
-  }
 }
 .bases-board-card {
   overflow-wrap: anywhere;
@@ -206,10 +178,7 @@ $boardsSidebarWidth: 220px;
       scroll-snap-align: end;
     }
   }
-  // a folded empty column is only a strip; swiping never stops on it
-  .bases-board-column.boards-empty-column {
-    scroll-snap-align: none;
-  }
+
 }
 
 // Kanban fills the window and each column scrolls on its own (CV-13), on desktop and phone alike: a page
