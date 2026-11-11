@@ -70,9 +70,6 @@ if (!window.__boardsTaskPopup) {
         if (v) r.dataset.value = v.textContent.trim().toLowerCase()
       })
     })
-    // the article starts with its own "ID · title" heading; drop the header's shorter copy
-    const t = root.querySelector(".article-title")
-    if (t && root.querySelector("article h1")) t.remove()
   }
 
   const load = (href) => {
@@ -88,11 +85,14 @@ if (!window.__boardsTaskPopup) {
       .then((html) => {
         if (seq !== loadSeq || !overlay) return
         const doc = new DOMParser().parseFromString(html, "text/html")
-        const head = doc.querySelector(".center .page-header")
+        // only the note's properties and its article: the page header also holds the site's buttons
         const art = doc.querySelector(".center article")
         if (!art) throw new Error("no article")
         const box = el("div", "boards-task-content")
-        if (head) box.appendChild(document.importNode(head, true))
+        const props = doc.querySelector(".center .page-header .note-properties")
+        const title = doc.querySelector(".center .page-header .article-title")
+        if (title && !art.querySelector("h1")) box.appendChild(el("h1", "", title.textContent.trim()))
+        if (props) box.appendChild(document.importNode(props, true))
         box.appendChild(document.importNode(art, true))
         decorate(box, url)
         body.replaceChildren(box)
