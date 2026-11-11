@@ -290,7 +290,7 @@ if (!window.__boardsDecor) {
   }
   const bidi = () => {
     document
-      .querySelectorAll(".center article p, .center article li, .center article blockquote")
+      .querySelectorAll(".center article p, .center article li, .center article blockquote, .center article h2, .center article h3, .center article h4")
       .forEach((n) => {
         if (!n.hasAttribute("dir")) n.setAttribute("dir", "auto")
       })
@@ -484,17 +484,43 @@ if (!window.__boardsDecor) {
     })
     tagProps(root)
   }
+  // search results: the task id and its board under the title (the plugin shows the title only)
+  const hits = (root) => {
+    const names = {}
+    document.querySelectorAll(".boards-nav a[href]").forEach((a) => {
+      const m = /projects\\/([^/]+)\\//i.exec(a.getAttribute("href") || "")
+      if (m) names[m[1].toLowerCase()] = a.textContent.trim()
+    })
+    root.querySelectorAll("a.result-card").forEach((card) => {
+      if (card.querySelector(".boards-hit-meta")) return
+      const slug = (card.id || card.getAttribute("href") || "").toLowerCase()
+      const m = /projects\\/([^/]+)\\/tasks\\/([a-z]+-\\d+)/.exec(slug)
+      if (!m) return
+      const meta = document.createElement("span")
+      meta.className = "boards-hit-meta"
+      const id = document.createElement("span")
+      id.className = "boards-hit-id"
+      id.textContent = m[2].toUpperCase()
+      const board = document.createElement("span")
+      board.textContent = names[m[1]] || m[1]
+      meta.append(id, board)
+      const h = card.querySelector("h3")
+      if (h) h.after(meta)
+      else card.prepend(meta)
+    })
+  }
   if (typeof MutationObserver === "function") {
     // childList only (our own writes are attribute changes or same-text no-ops), and once per frame
     let pending = false
     new MutationObserver((muts) => {
       if (pending) return
-      const box = muts.map((m) => m.target && m.target.closest && m.target.closest(".preview-container")).find(Boolean)
+      const box = muts.map((m) => m.target && m.target.closest && m.target.closest(".preview-container, .results-container")).find(Boolean)
       if (!box) return
       pending = true
       requestAnimationFrame(() => {
         pending = false
-        preview(box)
+        document.querySelectorAll(".preview-container").forEach(preview)
+        document.querySelectorAll(".results-container").forEach(hits)
       })
     }).observe(document.documentElement, { childList: true, subtree: true })
   }
@@ -840,6 +866,24 @@ BoardsDecor.css = `
 :is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="priority"][data-value="highest"] .note-properties-value { background: #d64545; color: #fff; }
 :is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="priority"][data-value="high"] .note-properties-value { background: #e8863a; color: #fff; }
 
+/* search: id and board under each result; no excerpt on a phone (2 results a screen); the previewed
+   note keeps its title and tags on top while it scrolls to the match */
+.boards-hit-meta { display: flex; direction: rtl; gap: 0.6rem; margin-top: 0.3rem; color: var(--gray); font-size: 0.8rem; font-weight: 400; }
+.boards-hit-id { direction: ltr; font-family: var(--codeFont); }
+@media (max-width: 800px) {
+  .search .results-container .result-card > p { display: none !important; }
+}
+.search .preview-container .preview-inner > .popover-hint:first-child {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.5rem 0;
+  background: var(--light);
+  border-bottom: 1px solid var(--lightgray);
+}
+/* the owner tag says "claude" on nearly every task: show it only when it says something else */
+:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="owner"][data-value="claude"] { display: none; }
+
 /* task page */
 .boards-dup-title { display: none; }
 .boards-empty-section { display: none; }
@@ -893,6 +937,8 @@ body[data-slug="index"] .center > hr { display: none; }
    checkbox, which hangs before the text, stays on the page */
 .page .center article ul.contains-task-list { padding-inline: 0; }
 .page .center article li:has(> input[type="checkbox"]) { padding-inline-start: 1.5rem; }
+/* same for a plain English bullet: its marker hangs on its own (left) side, where the RTL list has no room */
+:is(.center article, .boards-task-content, .preview-container) li:dir(ltr):not(:has(> input[type="checkbox"])) { margin-left: 1.4rem; }
 .boards-back {
   display: inline-block;
   margin: 0 0 0.4rem;

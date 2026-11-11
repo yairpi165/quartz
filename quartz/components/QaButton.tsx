@@ -52,10 +52,16 @@ if (!window.__boardsQa) {
   const refreshCount = () => api("/api/qa").then((d) => setCount(scoped(d.tasks).length)).catch(() => {})
 
   let overlay = null
-  const close = () => {
+  // The list has its own history entry ({boardsList}), so the browser / phone back gesture closes it and a
+  // task opened from it comes back to it (TaskPopup's popstate hook drives the restore).
+  const closeUI = () => {
     if (overlay) overlay.remove()
     overlay = null
     refreshCount()
+  }
+  const close = () => {
+    if (history.state && history.state.boardsList === "qa" && !history.state.boardsTask) history.back()
+    else closeUI()
   }
 
   // A check is often one long line: "(build tag) 1) do X. צריך לראות: Y. 2) do Z. ...". Split it into
@@ -99,15 +105,10 @@ if (!window.__boardsQa) {
     const c = el("section", "qa-card")
     const head = el("h4", "qa-task-title")
     head.appendChild(el("span", "qa-id", task.id))
-    // on the task's own board the title opens the task popup (the API has no file path; the board card has)
-    const cardLink = Array.from(document.querySelectorAll(".bases-board-card")).find((cd) => {
-      const n = cd.querySelector('.bases-board-card-row[data-prop="name"]')
-      return n && (n.title || n.textContent).trim().startsWith(task.id + " ") || (n && n.textContent.trim() === task.id)
-    })
-    const href = cardLink && cardLink.querySelector(":scope > a[href]")
-    if (href) {
+    // the title opens the task popup (TaskPopup picks up links inside the list)
+    if (task.file) {
       const a = el("a", "qa-title-link", " " + task.title)
-      a.href = href.href
+      a.href = "/Projects/" + slug(task.area) + "/Tasks/" + slug(task.file)
       head.appendChild(a)
     } else head.appendChild(document.createTextNode(" " + task.title))
     c.appendChild(head)
@@ -130,7 +131,7 @@ if (!window.__boardsQa) {
     reason.rows = 3
     reason.placeholder = "למה זה לא עבר? (חובה)"
     reason.setAttribute("aria-label", "סיבה")
-    const send = el("button", "qa-send", "שלח")
+    const send = el("button", "qa-send", "סמן כנכשל")
     const cancel = el("button", "qa-cancel", "ביטול")
     send.type = cancel.type = "button"
     const row = el("div", "qa-actions")
@@ -185,7 +186,7 @@ if (!window.__boardsQa) {
     body.replaceChildren()
     progress.textContent = ""
     if (!tasks.length) {
-      body.appendChild(el("p", "qa-empty", "אין משימות שמחכות ל-QA 🎉"))
+      body.appendChild(el("p", "qa-empty", "אין משימות שמחכות ל-QA"))
       return
     }
     const here = decodeURIComponent(location.pathname).toLowerCase()
@@ -197,19 +198,25 @@ if (!window.__boardsQa) {
     const showLeft = () => (progress.textContent = left ? "נותרו " + left + " מתוך " + total : "הכול נבדק")
     showLeft()
     areas.forEach((a) => {
-      body.appendChild(el("h3", "qa-area", a))
+      if (areas.length > 1) {
+        const h = el("h3", "qa-area", a)
+        h.appendChild(el("span", "qa-area-count", String(byArea[a].length)))
+        body.appendChild(h)
+      }
       byArea[a].forEach((t) =>
         body.appendChild(card(t, () => {
           left -= 1
           showLeft()
-          if (!left) body.appendChild(el("p", "qa-empty", "סיימת את כל הבדיקות 🎉"))
+          if (!left) body.appendChild(el("p", "qa-empty", "סיימת את כל הבדיקות"))
         })),
       )
     })
   }
 
-  const open = async () => {
+  const open = async (opts) => {
     if (overlay) return
+    const o = opts || {}
+    if (!o.noPush) history.pushState(Object.assign({}, history.state || {}, { boardsList: "qa" }), "")
     overlay = el("div", "qa-overlay")
     const dlg = el("div", "qa-dialog")
     dlg.setAttribute("role", "dialog")
@@ -238,6 +245,7 @@ if (!window.__boardsQa) {
       const tasks = scoped(d.tasks)
       setCount(tasks.length)
       render(body, tasks, progress)
+      if (o.scroll) body.scrollTop = o.scroll
     } catch (e) {
       body.replaceChildren(el("p", "qa-error", e.message))
     }
@@ -246,7 +254,14 @@ if (!window.__boardsQa) {
   document.addEventListener("click", (e) => {
     if (e.target.closest && e.target.closest(".boards-qa-button")) open()
   })
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") close() })
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && overlay) close() })
+  window.__boardsLists = window.__boardsLists || {}
+  window.__boardsLists["qa"] = {
+    open: (o) => open(o),
+    closeUI: () => closeUI(),
+    isOpen: () => !!overlay,
+    scroll: () => (overlay ? overlay.querySelector(".qa-body").scrollTop : 0),
+  }
   document.addEventListener("nav", refreshCount)
   refreshCount()
 }
@@ -296,37 +311,65 @@ QaButton.css = `
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.55);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: 4vh 1rem;
+  padding: 1.5rem;
 }
+/* the same frame as the task popup (TaskPopup.tsx): width, bar on top, bordered close button */
 .qa-dialog {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  max-height: 100%;
-  width: min(42rem, 100%);
+  max-height: min(52rem, 100%);
+  width: min(48rem, 100%);
   background: var(--light);
   color: var(--dark);
   border: 1px solid var(--lightgray);
-  border-radius: 10px;
-  padding: 1rem 1.1rem 1.2rem;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
   direction: rtl;
   text-align: start;
 }
-.qa-top { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.qa-top {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-inline: 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--lightgray);
+}
 /* Only the task list scrolls; the heading and close button stay put. */
-.qa-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.qa-heading { margin: 0; font-size: 1.3rem; }
+.qa-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0.25rem 1.5rem 1.5rem; }
+.qa-heading { margin: 0; font-size: 1.1rem; }
 .qa-progress { margin-inline-start: 0.7rem; font-size: 0.85rem; font-weight: 400; color: var(--gray); }
-.qa-close { border: 0; background: none; color: var(--darkgray); font-size: 1.3rem; cursor: pointer; padding: 0.3rem 0.5rem; }
-.qa-area { margin: 1rem 0 0.4rem; font-size: 1rem; color: var(--secondary); }
-.qa-card { border: 1px solid var(--lightgray); border-radius: 8px; padding: 0.8rem 0.9rem; margin: 0.6rem 0; }
+.qa-close, .boards-task-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid var(--lightgray);
+  border-radius: 6px;
+  background: none;
+  color: var(--darkgray);
+  font-size: 1rem;
+  cursor: pointer;
+}
+.qa-close:hover { color: var(--secondary); border-color: var(--secondary); }
+.qa-area { display: flex; align-items: baseline; gap: 0.5rem; margin: 1.25rem 0 0.25rem; font-size: 1rem; color: var(--secondary); }
+.qa-area-count { color: var(--gray); font-size: 0.8rem; font-weight: 400; }
+/* one task after another, divided by a line (a framed card inside the framed popup ate the phone's width) */
+.qa-card { border: 0; border-bottom: 1px solid var(--lightgray); border-radius: 0; padding: 1rem 0; margin: 0; }
+.qa-card:last-child { border-bottom: 0; }
 .qa-task-title { margin: 0 0 0.5rem; font-size: 1rem; }
 .qa-id { display: inline-block; padding: 0 0.4rem; border-radius: 4px; background: var(--highlight); color: var(--secondary); font-family: var(--codeFont); font-size: 0.85rem; direction: ltr; }
-.qa-label { font-size: 0.8rem; color: var(--gray); margin-bottom: 0.2rem; }
+/* "מה לבדוק" said nothing the checks under it do not */
+.qa-label { display: none; }
 .qa-checks { margin: 0 0 0.7rem; padding: 0; list-style: none; counter-reset: qa-check; }
 .qa-check { margin: 0 0 0.6rem; line-height: 1.55; }
 /* every check has its own numbered steps; a heading per check keeps "1, 2, 1, 2, 3" readable */
@@ -351,7 +394,9 @@ QaButton.css = `
 .qa-expect b { color: var(--secondary); }
 .qa-nocheck { color: var(--gray); }
 /* the verdict buttons stay in view while a long card scrolls past */
-.qa-card > .qa-actions, .qa-card > .qa-failbox { position: sticky; bottom: 0; padding: 0.5rem 0 0.1rem; background: var(--light); }
+/* the verdict buttons stay in view; the reason box does not, so it never covers the checks above it */
+.qa-card > .qa-actions { position: sticky; bottom: 0; padding: 0.5rem 0 0.1rem; background: var(--light); }
+.qa-card > .qa-failbox { padding: 0.5rem 0 0.1rem; }
 .qa-actions { display: flex; gap: 0.6rem; }
 .qa-actions[hidden], .qa-failbox[hidden] { display: none; }
 .qa-actions button, .qa-send, .qa-cancel {
@@ -373,9 +418,11 @@ QaButton.css = `
 .qa-error { color: #d64545; margin-top: 0.4rem; min-height: 0; }
 .qa-done { font-weight: 600; }
 .qa-empty { text-align: center; padding: 1.5rem 0; color: var(--darkgray); }
-@media (max-width: 600px) {
-  .qa-overlay { padding: 0; }
-  .qa-dialog { width: 100%; height: 100%; border-radius: 0; border: 0; }
+@media (max-width: 800px) {
+  .qa-overlay { padding: 0; align-items: stretch; }
+  .qa-dialog { width: 100%; height: 100%; max-height: none; border-radius: 0; border: 0; padding-bottom: env(safe-area-inset-bottom); }
+  .qa-top { padding-top: max(0.6rem, env(safe-area-inset-top)); }
+  .qa-body { padding: 0.25rem 1rem 1.5rem; }
 }
 `
 

@@ -29,6 +29,7 @@ if (!window.__boardsTaskPopup) {
   let lastFocus = null
   let loadSeq = 0
   let rendered = location.pathname
+  const listScroll = {}
   const el = (tag, cls, text) => {
     const n = document.createElement(tag)
     if (cls) n.className = cls
@@ -58,7 +59,7 @@ if (!window.__boardsTaskPopup) {
       if (h && !h.startsWith("#")) a.setAttribute("href", new URL(h, url).href)
     })
     root.querySelectorAll("[src]").forEach((n) => n.setAttribute("src", new URL(n.getAttribute("src"), url).href))
-    root.querySelectorAll("p, li, blockquote").forEach((n) => {
+    root.querySelectorAll("p, li, blockquote, article h2, article h3, article h4").forEach((n) => {
       if (!n.hasAttribute("dir")) n.setAttribute("dir", "auto")
     })
     // same tags as the task page (BoardsDecor: status label, "מאמץ: L")
@@ -71,6 +72,7 @@ if (!window.__boardsTaskPopup) {
     const body = overlay.querySelector(".boards-task-body")
     overlay.querySelector(".boards-task-full").href = href
     body.replaceChildren(el("p", "boards-task-status", "טוען…"))
+    overlay.querySelector(".boards-task-name").textContent = ""
     body.scrollTop = 0
     const url = new URL(href, location.href)
     const pre = window.quartzPrefetch && window.quartzPrefetch.load ? window.quartzPrefetch.load(url) : null
@@ -92,6 +94,8 @@ if (!window.__boardsTaskPopup) {
         body.replaceChildren(box)
         const h = box.querySelector("article h1") || box.querySelector(".article-title")
         overlay.querySelector(".boards-task-panel").setAttribute("aria-label", h ? h.textContent.trim() : "משימה")
+        // the bar keeps the task's id and name in sight while the body scrolls
+        overlay.querySelector(".boards-task-name").textContent = h ? h.textContent.trim() : ""
       })
       .catch(() => {
         if (seq !== loadSeq || !overlay) return
@@ -107,12 +111,13 @@ if (!window.__boardsTaskPopup) {
       panel.setAttribute("role", "dialog")
       panel.setAttribute("aria-modal", "true")
       const bar = el("div", "boards-task-bar")
-      const full = el("a", "boards-task-full", "פתח בדף מלא ↗")
+      const name = el("span", "boards-task-name")
+      const full = el("a", "boards-task-full", "פתח בדף מלא")
       const x = el("button", "boards-task-close", "✕")
       x.type = "button"
       x.setAttribute("aria-label", "סגירה")
       x.addEventListener("click", close)
-      bar.append(full, x)
+      bar.append(name, full, x)
       panel.append(bar, el("div", "boards-task-body"))
       overlay.appendChild(panel)
       overlay.addEventListener("click", (e) => {
@@ -161,7 +166,25 @@ if (!window.__boardsTaskPopup) {
         if (!opensInPopup(u, new URL(location.href))) return
         e.preventDefault()
         e.stopPropagation()
-        // the QA / E2E popup closes on Escape
+        // the list steps aside (its history entry stays under the task's), and comes back, at the same
+        // scroll, when the task closes
+        const lists = window.__boardsLists || {}
+        Object.keys(lists).forEach((k) => {
+          if (lists[k].isOpen()) {
+            listScroll[k] = lists[k].scroll()
+            lists[k].closeUI()
+          }
+        })
+        open(u.href)
+        return
+      }
+      // a search result opens in the popup too, on a board page
+      const hit = t.closest(".search-container a.result-card[href]")
+      if (hit && onBoard()) {
+        const u = new URL(hit.href, location.href)
+        if (!opensInPopup(u, new URL(location.href))) return
+        e.preventDefault()
+        e.stopPropagation()
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
         open(u.href)
         return
@@ -186,21 +209,37 @@ if (!window.__boardsTaskPopup) {
     if (e.key === "Escape" && overlay) close()
   })
   // back / forward: true = handled here, the router must not re-render the page
+  // Entries: {} board, {boardsList} a QA / E2E list, {boardsList?, boardsTask} a task (from a list or not).
   window.__boardsPopstate = () => {
+    const lists = window.__boardsLists || {}
+    const closeLists = () => Object.keys(lists).forEach((k) => lists[k].isOpen() && lists[k].closeUI())
     if (rendered !== location.pathname) {
       closeUI()
+      closeLists()
       return false
     }
-    const s = history.state
-    if (s && s.boardsTask) {
+    const s = history.state || {}
+    if (s.boardsTask) {
+      closeLists()
       show(s.boardsTask)
       return true
     }
+    let handled = false
     if (overlay) {
       closeUI()
+      handled = true
+    }
+    if (s.boardsList && lists[s.boardsList]) {
+      if (!lists[s.boardsList].isOpen()) lists[s.boardsList].open({ noPush: true, scroll: listScroll[s.boardsList] || 0 })
       return true
     }
-    return false
+    Object.keys(lists).forEach((k) => {
+      if (lists[k].isOpen()) {
+        lists[k].closeUI()
+        handled = true
+      }
+    })
+    return handled
   }
   // after a page change (incl. coming back from the full page to an entry that had the popup open)
   document.addEventListener("nav", () => {
@@ -241,28 +280,29 @@ html.boards-task-open, html.boards-task-open body { overflow: hidden; }
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.6rem 0.75rem 0.6rem 1.25rem;
+  padding-block: 0.6rem;
+  padding-inline: 1.25rem 0.75rem;
   border-bottom: 1px solid var(--lightgray);
 }
+.boards-task-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--dark);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
 .boards-task-full {
+  flex: none;
   font-size: 0.85rem;
   color: var(--darkgray);
   background: none !important;
 }
 .boards-task-full:hover { color: var(--secondary); }
-.boards-task-close {
-  display: grid;
-  place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border: 1px solid var(--lightgray);
-  border-radius: 6px;
-  background: none;
-  color: var(--darkgray);
-  font-size: 1rem;
-  cursor: pointer;
-}
 .boards-task-close:hover { color: var(--secondary); border-color: var(--secondary); }
+/* the close button's look is shared with the QA / E2E popups (QaButton.css) */
 .boards-task-body {
   flex: 1 1 auto;
   min-height: 0;

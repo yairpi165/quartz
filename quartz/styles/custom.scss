@@ -96,8 +96,19 @@ $boardsSidebarWidth: 220px;
 }
 
 :root[data-boards-sidebar="collapsed"] .page > #quartz-body {
+  // invisible and out of the layout, but rendered: the search overlay lives inside it and the top-bar
+  // search button (SearchShortcut) must still be able to show it
   & .sidebar.left {
-    display: none;
+    position: fixed;
+    width: 0;
+    height: 0;
+    padding: 0;
+    overflow: visible;
+    visibility: hidden;
+
+    & .search-container {
+      visibility: visible;
+    }
   }
   @media all and not ($mobile) {
     grid-template-columns: auto;

@@ -58,10 +58,16 @@ if (!window.__boardsE2e) {
   const refreshCount = () => load().then((t) => setCount(t.length)).catch(() => {})
 
   let overlay = null
-  const close = () => {
+  // The list has its own history entry ({boardsList}), so the browser / phone back gesture closes it and a
+  // task opened from it comes back to it (TaskPopup's popstate hook drives the restore).
+  const closeUI = () => {
     if (overlay) overlay.remove()
     overlay = null
     refreshCount()
+  }
+  const close = () => {
+    if (history.state && history.state.boardsList === "e2e" && !history.state.boardsTask) history.back()
+    else closeUI()
   }
 
   const row = (t) => {
@@ -72,10 +78,16 @@ if (!window.__boardsE2e) {
     a.href = "/Projects/" + slug(t.area) + "/Tasks/" + slug(t.file)
     head.appendChild(a)
     c.appendChild(head)
+    // the group heading already says the status; priority shows only when it is not the usual "high"
     const meta = el("div", "e2e-meta")
-    meta.appendChild(el("span", "e2e-prio e2e-prio-" + t.priority, "עדיפות: " + (PRIO[t.priority] || t.priority || "—")))
-    meta.appendChild(el("span", "e2e-status", "סטטוס: " + (LABELS[t.status] || t.status)))
-    c.appendChild(meta)
+    if (t.priority && t.priority !== "high")
+      meta.appendChild(el("span", "e2e-prio e2e-prio-" + t.priority, "עדיפות: " + (PRIO[t.priority] || t.priority)))
+    if (meta.childNodes.length) c.appendChild(meta)
+    // the whole row opens the task (TaskPopup picks up the link click)
+    c.addEventListener("click", (e) => {
+      if (e.target.closest && e.target.closest("a")) return
+      a.click()
+    })
     return c
   }
 
@@ -85,16 +97,36 @@ if (!window.__boardsE2e) {
       body.appendChild(el("p", "qa-empty", "אין רגרסיות E2E פתוחות"))
       return
     }
+    // by board (only when the list spans boards), then by status in board order
+    const ORDER = ["backlog", "todo", "in-progress", "in-review", "sim-qa", "qa", "reopened", "done"]
+    const rank = (st) => (ORDER.indexOf(st) < 0 ? 99 : ORDER.indexOf(st))
     const byArea = {}
     tasks.forEach((t) => (byArea[t.area] = byArea[t.area] || []).push(t))
-    Object.keys(byArea).sort().forEach((a) => {
-      body.appendChild(el("h3", "qa-area", a))
-      byArea[a].forEach((t) => body.appendChild(row(t)))
+    const areas = Object.keys(byArea).sort()
+    areas.forEach((a) => {
+      if (areas.length > 1) {
+        const h = el("h3", "qa-area", a)
+        h.appendChild(el("span", "qa-area-count", String(byArea[a].length)))
+        body.appendChild(h)
+      }
+      let last = null
+      byArea[a]
+        .slice()
+        .sort((x, y) => rank(x.status) - rank(y.status))
+        .forEach((t) => {
+          if (t.status !== last) {
+            last = t.status
+            body.appendChild(el("h4", "e2e-status-head", LABELS[t.status] || t.status))
+          }
+          body.appendChild(row(t))
+        })
     })
   }
 
-  const open = async () => {
+  const open = async (opts) => {
     if (overlay) return
+    const o = opts || {}
+    if (!o.noPush) history.pushState(Object.assign({}, history.state || {}, { boardsList: "e2e" }), "")
     overlay = el("div", "qa-overlay")
     const dlg = el("div", "qa-dialog")
     dlg.setAttribute("role", "dialog")
@@ -123,6 +155,7 @@ if (!window.__boardsE2e) {
       setCount(t.length)
       progress.textContent = t.length + " פתוחות"
       render(body, t)
+      if (o.scroll) body.scrollTop = o.scroll
     } catch (e) {
       body.replaceChildren(el("p", "qa-error", e.message))
     }
@@ -132,6 +165,13 @@ if (!window.__boardsE2e) {
     if (e.target.closest && e.target.closest(".boards-e2e-button")) open()
   })
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && overlay) close() })
+  window.__boardsLists = window.__boardsLists || {}
+  window.__boardsLists["e2e"] = {
+    open: (o) => open(o),
+    closeUI: () => closeUI(),
+    isOpen: () => !!overlay,
+    scroll: () => (overlay ? overlay.querySelector(".qa-body").scrollTop : 0),
+  }
   document.addEventListener("nav", refreshCount)
   refreshCount()
 }
@@ -169,7 +209,11 @@ E2eButton.css = `
 .qa-progress { unicode-bidi: isolate; }
 .e2e-link { color: inherit; text-decoration: none; }
 .e2e-link:hover { color: var(--secondary); text-decoration: underline; }
-.e2e-meta { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; font-size: 0.85rem; color: var(--darkgray); }
+.e2e-card { cursor: pointer; }
+.e2e-card:hover .e2e-link { color: var(--secondary); }
+.e2e-card .qa-task-title { margin: 0; }
+.e2e-status-head { margin: 1rem 0 0; color: var(--gray); font-size: 0.8rem; font-weight: 600; }
+.e2e-meta { margin-top: 0.35rem; display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; font-size: 0.85rem; color: var(--darkgray); }
 .e2e-prio-highest { color: #d64545; font-weight: 600; }
 .e2e-prio-high { color: #e8863a; font-weight: 600; }
 `
