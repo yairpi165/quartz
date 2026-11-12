@@ -26,6 +26,8 @@ export declare global {
      */
     quartzPrefetch?: {
       load(url: URL): Promise<PrefetchedPage | undefined>
+      /** Drop every cached page (live reload calls it, or a refresh shows the old page) */
+      invalidate?(): void
     }
     /** Absolute URL of the site's static/ folder (renderPage.tsx) */
     quartzStaticUrl?: string

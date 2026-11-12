@@ -128,6 +128,7 @@ window.quartzPrefetch = {
   // The page from the cache, or fetched now and kept: whoever asks first (a popover on
   // mouseenter, the prefetcher after its hover delay, the router on click) fetches it once.
   load: (url: URL) => remember(url, "high"),
+  invalidate: () => cache.clear(),
 }
 
 // --- intent: pointing at, focusing or touching a link -------------------------------------

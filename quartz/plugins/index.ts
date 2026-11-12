@@ -42,6 +42,8 @@ export function getStaticResourcesFromPlugins(ctx: BuildCtx) {
           // does a full reload, since scripts and styles may have changed.
           const hardReload = () => document.location.reload(true)
           const softRefresh = () => {
+            // the prefetch cache keeps pages for 5 minutes: without this the refresh re-renders the old page
+            if (window.quartzPrefetch && window.quartzPrefetch.invalidate) window.quartzPrefetch.invalidate()
             if (window.spaNavigate) window.spaNavigate(new URL(location.href), true).catch(hardReload)
             else hardReload()
           }
