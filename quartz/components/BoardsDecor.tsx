@@ -565,6 +565,24 @@ if (!window.__boardsDecor) {
       fade(b)
     })
   }
+  // Phone: a fresh page load always starts on the first column (backlog). Safari re-snaps the board after
+  // the empty columns are added, and a reload could land on "in-progress". Once per full page load, so a
+  // live refresh or going back keeps the place the reader had scrolled to.
+  let started = false
+  const startAtFirst = () => {
+    if (started || !window.matchMedia("(max-width: 800px)").matches) return
+    const b = document.querySelector(".bases-view.is-active .bases-board")
+    if (!b) return
+    started = true
+    const go = () => {
+      b.scrollLeft = 0
+    }
+    go()
+    requestAnimationFrame(() => {
+      go()
+      setTimeout(go, 300)
+    })
+  }
   const run = () => {
     cards()
     fill()
@@ -582,6 +600,7 @@ if (!window.__boardsDecor) {
     tabMemory()
     activeTab()
     fades()
+    startAtFirst()
     requestAnimationFrame(fades)
   }
   // A sideways wheel / trackpad swipe (or shift + wheel) over the cards must move the whole board. The

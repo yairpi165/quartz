@@ -7,6 +7,7 @@ import BoardsDecor from "./quartz/components/BoardsDecor"
 import E2eButton from "./quartz/components/E2eButton"
 import TaskPopup from "./quartz/components/TaskPopup"
 import SearchShortcut from "./quartz/components/SearchShortcut"
+import RefreshButton from "./quartz/components/RefreshButton"
 
 const config = await loadQuartzConfig()
 
@@ -22,6 +23,7 @@ const boardsDecor = BoardsDecor()
 const e2eButton = E2eButton()
 const taskPopup = TaskPopup()
 const searchShortcut = SearchShortcut()
+const refreshButton = RefreshButton()
 for (const [pageType, pageLayout] of Object.entries(layout.byPageType)) {
   if (pageType === "404") continue
   // page types share the defaults' header array; build a new one per page type
@@ -31,6 +33,7 @@ for (const [pageType, pageLayout] of Object.entries(layout.byPageType)) {
     qaButton,
     e2eButton,
     searchShortcut,
+    refreshButton,
     boardsDecor,
     taskPopup,
   ]
@@ -44,6 +47,7 @@ layout.defaults.header = [
   qaButton,
   e2eButton,
   searchShortcut,
+  refreshButton,
   boardsDecor,
   taskPopup,
 ]
