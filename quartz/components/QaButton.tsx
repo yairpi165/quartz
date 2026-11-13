@@ -10,8 +10,8 @@ function QaButton({ displayClass }: QuartzComponentProps) {
     <button
       type="button"
       class={classNames(displayClass, "boards-qa-button")}
-      aria-label="בדיקות QA"
-      title="בדיקות QA"
+      aria-label="QA checks"
+      title="QA checks"
     >
       QA<span class="boards-qa-count" hidden></span>
     </button>
@@ -38,7 +38,7 @@ if (!window.__boardsQa) {
     const res = await fetch(path, Object.assign({ cache: "no-store" }, opts))
     let data = {}
     try { data = await res.json() } catch (e) {}
-    if (!res.ok) throw new Error(data.error || "שגיאה " + res.status)
+    if (!res.ok) throw new Error(data.error || "Error " + res.status)
     return data
   }
   const setCount = (n) => {
@@ -66,7 +66,11 @@ if (!window.__boardsQa) {
 
   // A check is often one long line: "(build tag) 1) do X. צריך לראות: Y. 2) do Z. ...". Split it into
   // numbered steps and set the expected result of each on its own line. Plain text stays plain.
+  // EXPECT is the vault's marker (Hebrew, in the checklists); the site shows it as "Expected:".
   const EXPECT = "צריך לראות:"
+  // Yair's checklist text is Hebrew inside the English popup: any Hebrew makes the block right to left
+  // (a check may start with an English build tag, so dir=auto alone would guess wrong)
+  const rtlIf = (node, text) => node.setAttribute("dir", /[\\u0590-\\u05FF]/.test(text) ? "rtl" : "auto")
   const stepNode = (text) => {
     const li = el("li", "qa-step")
     const at = text.indexOf(EXPECT)
@@ -76,13 +80,16 @@ if (!window.__boardsQa) {
     }
     li.appendChild(document.createTextNode(text.slice(0, at).trim()))
     const exp = el("div", "qa-expect")
-    exp.appendChild(el("b", "", EXPECT))
+    const label = el("b", "", "Expected:")
+    label.setAttribute("dir", "ltr")
+    exp.appendChild(label)
     exp.appendChild(document.createTextNode(" " + text.slice(at + EXPECT.length).trim()))
     li.appendChild(exp)
     return li
   }
   const checkItem = (raw) => {
     const li = el("li", "qa-check")
+    rtlIf(li, raw.split(EXPECT).join(""))
     let rest = raw.trim()
     const tag = /^\\([^)]*\\)\\s*/.exec(rest)
     if (tag) {
@@ -104,6 +111,7 @@ if (!window.__boardsQa) {
   const card = (task, onDone) => {
     const c = el("section", "qa-card")
     const head = el("h4", "qa-task-title")
+    rtlIf(head, task.title || "")
     head.appendChild(el("span", "qa-id", task.id))
     // the title opens the task popup (TaskPopup picks up links inside the list)
     if (task.file) {
@@ -112,16 +120,16 @@ if (!window.__boardsQa) {
       head.appendChild(a)
     } else head.appendChild(document.createTextNode(" " + task.title))
     c.appendChild(head)
-    c.appendChild(el("div", "qa-label", "מה לבדוק"))
+    c.appendChild(el("div", "qa-label", "What to check"))
     const ul = el("ul", "qa-checks")
-    if (!task.checklist.length) ul.appendChild(el("li", "qa-nocheck", "לא הוגדרה רשימת בדיקה למשימה הזו"))
+    if (!task.checklist.length) ul.appendChild(el("li", "qa-nocheck", "No checklist defined for this task"))
     task.checklist.forEach((t) => ul.appendChild(checkItem(t)))
     c.appendChild(ul)
     const err = el("div", "qa-error")
     err.setAttribute("role", "alert")
     const actions = el("div", "qa-actions")
-    const pass = el("button", "qa-pass", "עבר ✓")
-    const fail = el("button", "qa-fail", "לא עבר ✗")
+    const pass = el("button", "qa-pass", "Pass ✓")
+    const fail = el("button", "qa-fail", "Fail ✗")
     pass.type = fail.type = "button"
     actions.appendChild(pass)
     actions.appendChild(fail)
@@ -129,10 +137,11 @@ if (!window.__boardsQa) {
     failBox.hidden = true
     const reason = el("textarea", "qa-reason")
     reason.rows = 3
-    reason.placeholder = "למה זה לא עבר? (חובה)"
-    reason.setAttribute("aria-label", "סיבה")
-    const send = el("button", "qa-send", "סמן כנכשל")
-    const cancel = el("button", "qa-cancel", "ביטול")
+    reason.placeholder = "Why did it fail? (required)"
+    reason.setAttribute("aria-label", "Reason")
+    reason.setAttribute("dir", "auto")
+    const send = el("button", "qa-send", "Mark as failed")
+    const cancel = el("button", "qa-cancel", "Cancel")
     send.type = cancel.type = "button"
     const row = el("div", "qa-actions")
     row.appendChild(send)
@@ -153,7 +162,7 @@ if (!window.__boardsQa) {
           body: JSON.stringify({ id: task.id, verdict, reason: why }),
         })
         c.className = "qa-card qa-resolved"
-        c.replaceChildren(el("div", "qa-done", task.id + (verdict === "pass" ? " — עבר ✓ (done)" : " — לא עבר, נפתח מחדש (reopened)")))
+        c.replaceChildren(el("div", "qa-done", task.id + (verdict === "pass" ? " — passed ✓ (done)" : " — failed, reopened")))
         onDone()
       } catch (e) {
         err.textContent = e.message
@@ -173,7 +182,7 @@ if (!window.__boardsQa) {
     })
     send.addEventListener("click", () => {
       if (!reason.value.trim()) {
-        err.textContent = "חובה לכתוב סיבה"
+        err.textContent = "A reason is required"
         reason.focus()
         return
       }
@@ -186,7 +195,7 @@ if (!window.__boardsQa) {
     body.replaceChildren()
     progress.textContent = ""
     if (!tasks.length) {
-      body.appendChild(el("p", "qa-empty", "אין משימות שמחכות ל-QA"))
+      body.appendChild(el("p", "qa-empty", "No tasks waiting for QA"))
       return
     }
     const here = decodeURIComponent(location.pathname).toLowerCase()
@@ -195,7 +204,7 @@ if (!window.__boardsQa) {
     const areas = Object.keys(byArea).sort((a, b) => (here.includes(slug(b)) ? 1 : 0) - (here.includes(slug(a)) ? 1 : 0) || a.localeCompare(b))
     let left = tasks.length
     const total = tasks.length
-    const showLeft = () => (progress.textContent = left ? "נותרו " + left + " מתוך " + total : "הכול נבדק")
+    const showLeft = () => (progress.textContent = left ? left + " of " + total + " left" : "All checked")
     showLeft()
     areas.forEach((a) => {
       if (areas.length > 1) {
@@ -207,7 +216,7 @@ if (!window.__boardsQa) {
         body.appendChild(card(t, () => {
           left -= 1
           showLeft()
-          if (!left) body.appendChild(el("p", "qa-empty", "סיימת את כל הבדיקות"))
+          if (!left) body.appendChild(el("p", "qa-empty", "All checks done"))
         })),
       )
     })
@@ -221,19 +230,19 @@ if (!window.__boardsQa) {
     const dlg = el("div", "qa-dialog")
     dlg.setAttribute("role", "dialog")
     dlg.setAttribute("aria-modal", "true")
-    dlg.setAttribute("aria-label", "בדיקות QA")
+    dlg.setAttribute("aria-label", "QA checks")
     const top = el("div", "qa-top")
-    const heading = el("h2", "qa-heading", "בדיקות QA")
+    const heading = el("h2", "qa-heading", "QA checks")
     const progress = el("span", "qa-progress")
     heading.appendChild(progress)
     top.appendChild(heading)
     const x = el("button", "qa-close", "✕")
     x.type = "button"
-    x.setAttribute("aria-label", "סגור")
+    x.setAttribute("aria-label", "Close")
     x.addEventListener("click", close)
     top.appendChild(x)
     const body = el("div", "qa-body")
-    body.appendChild(el("p", "qa-empty", "טוען…"))
+    body.appendChild(el("p", "qa-empty", "Loading…"))
     dlg.appendChild(top)
     dlg.appendChild(body)
     overlay.appendChild(dlg)
@@ -330,7 +339,6 @@ QaButton.css = `
   border-radius: 12px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
   overflow: hidden;
-  direction: rtl;
   text-align: start;
 }
 .qa-top {
@@ -368,14 +376,14 @@ QaButton.css = `
 .qa-card { border: 1px solid var(--lightgray); border-radius: 10px; padding: 0.9rem 1rem; margin: 0.75rem 0; }
 .qa-task-title { margin: 0 0 0.5rem; font-size: 1rem; }
 .qa-id { display: inline-block; padding: 0 0.4rem; border-radius: 4px; background: var(--highlight); color: var(--secondary); font-family: var(--codeFont); font-size: 0.85rem; direction: ltr; }
-/* "מה לבדוק" said nothing the checks under it do not */
+/* "What to check" said nothing the checks under it do not */
 .qa-label { display: none; }
 .qa-checks { margin: 0 0 0.7rem; padding: 0; list-style: none; counter-reset: qa-check; }
 .qa-check { margin: 0 0 0.6rem; line-height: 1.55; }
 /* every check has its own numbered steps; a heading per check keeps "1, 2, 1, 2, 3" readable */
 .qa-check::before {
   counter-increment: qa-check;
-  content: "בדיקה " counter(qa-check);
+  content: "Check " counter(qa-check);
   display: block;
   margin-bottom: 0.15rem;
   color: var(--gray);
@@ -414,7 +422,7 @@ QaButton.css = `
 .qa-pass:hover { background: #2e9d57 !important; color: #fff !important; }
 .qa-fail:hover, .qa-send:hover { background: #d64545 !important; color: #fff !important; }
 .qa-actions button:disabled, .qa-reason:disabled { opacity: 0.5; cursor: wait; }
-.qa-reason { width: 100%; box-sizing: border-box; margin-bottom: 0.5rem; padding: 0.5rem; border: 1px solid var(--gray); border-radius: 8px; background: var(--light); color: var(--dark); font: inherit; resize: vertical; direction: rtl; }
+.qa-reason { width: 100%; box-sizing: border-box; margin-bottom: 0.5rem; padding: 0.5rem; border: 1px solid var(--gray); border-radius: 8px; background: var(--light); color: var(--dark); font: inherit; resize: vertical; }
 .qa-error { color: #d64545; margin-top: 0.4rem; min-height: 0; }
 .qa-done { font-weight: 600; }
 .qa-empty { text-align: center; padding: 1.5rem 0; color: var(--darkgray); }

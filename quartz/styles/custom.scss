@@ -9,9 +9,9 @@
   }
 }
 
-// Board-first layout: one narrow sidebar (title, search, dark mode, board list) on the visual RIGHT,
-// no second sidebar, and the center (the kanban) takes all remaining width. The site is RTL (he-IL),
-// where the first grid column is the rightmost one, so the sidebar sits in the first column.
+// Board-first layout: one narrow sidebar (title, search, dark mode, board list) on the left, no second
+// sidebar, and the center (the kanban) takes all remaining width. The site is LTR (en-GB, CV-27); the
+// rules use logical sides, so the sidebar sits in the first grid column.
 // The header button (SidebarToggle) sets html[data-boards-sidebar="collapsed"]: the sidebar is hidden
 // and the board takes the full width.
 $boardsSidebarWidth: 220px;
@@ -154,7 +154,7 @@ $boardsSidebarWidth: 220px;
 }
 // one fixed width for every column (CV-25): with `1fr` a board with fewer columns, or a closed sidebar,
 // stretched them. Every status always has a full-width column (BoardsDecor adds the empty ones, with an
-// "אין משימות" hint); folding them to a strip was tried in CV-26 and rejected by Yair.
+// "No tasks" hint); folding them to a strip was tried in CV-26 and rejected by Yair.
 .bases-board-column {
   flex: 0 0 17rem;
   min-width: 0;

@@ -12,8 +12,8 @@ function E2eButton({ displayClass }: QuartzComponentProps) {
     <button
       type="button"
       class={classNames(displayClass, "boards-e2e-button")}
-      aria-label="רגרסיות E2E"
-      title="רגרסיות E2E"
+      aria-label="E2E regressions"
+      title="E2E regressions"
       hidden
     >
       E2E<span class="boards-e2e-count"></span>
@@ -32,7 +32,9 @@ if (!window.__boardsE2e) {
   }
   const slug = (s) => s.trim().replace(/\\s+/g, "-").replace(/[?#]/g, "").toLowerCase()
   const LABELS = ${JSON.stringify(STATUS_LABELS)}
-  const PRIO = { highest: "הכי גבוהה", high: "גבוהה", medium: "בינונית", low: "נמוכה", lowest: "הכי נמוכה" }
+  const PRIO = { highest: "Highest", high: "High", medium: "Medium", low: "Low", lowest: "Lowest" }
+  // a Hebrew task title reads right to left inside the English popup
+  const rtlIf = (node, text) => node.setAttribute("dir", /[\\u0590-\\u05FF]/.test(text) ? "rtl" : "auto")
   // On a board page only that board's tasks; anywhere else (home, a note) all boards'.
   const scoped = (tasks) => {
     const here = decodeURIComponent(location.pathname).toLowerCase()
@@ -43,7 +45,7 @@ if (!window.__boardsE2e) {
     const res = await fetch("/api/e2e", { cache: "no-store" })
     let data = {}
     try { data = await res.json() } catch (e) {}
-    if (!res.ok) throw new Error(data.error || "שגיאה " + res.status)
+    if (!res.ok) throw new Error(data.error || "Error " + res.status)
     return scoped(data.tasks || [])
   }
   const setCount = (n) => {
@@ -73,6 +75,7 @@ if (!window.__boardsE2e) {
   const row = (t) => {
     const c = el("section", "qa-card e2e-card")
     const head = el("h4", "qa-task-title")
+    rtlIf(head, t.title || "")
     head.appendChild(el("span", "qa-id", t.id))
     const a = el("a", "e2e-link", " " + t.title)
     a.href = "/Projects/" + slug(t.area) + "/Tasks/" + slug(t.file)
@@ -81,7 +84,7 @@ if (!window.__boardsE2e) {
     // the group heading already says the status; priority shows only when it is not the usual "high"
     const meta = el("div", "e2e-meta")
     if (t.priority && t.priority !== "high")
-      meta.appendChild(el("span", "e2e-prio e2e-prio-" + t.priority, "עדיפות: " + (PRIO[t.priority] || t.priority)))
+      meta.appendChild(el("span", "e2e-prio e2e-prio-" + t.priority, "Priority: " + (PRIO[t.priority] || t.priority)))
     if (meta.childNodes.length) c.appendChild(meta)
     // the whole row opens the task (TaskPopup picks up the link click)
     c.addEventListener("click", (e) => {
@@ -94,7 +97,7 @@ if (!window.__boardsE2e) {
   const render = (body, tasks) => {
     body.replaceChildren()
     if (!tasks.length) {
-      body.appendChild(el("p", "qa-empty", "אין רגרסיות E2E פתוחות"))
+      body.appendChild(el("p", "qa-empty", "No open E2E regressions"))
       return
     }
     // by board (only when the list spans boards), then by status in board order
@@ -131,19 +134,19 @@ if (!window.__boardsE2e) {
     const dlg = el("div", "qa-dialog")
     dlg.setAttribute("role", "dialog")
     dlg.setAttribute("aria-modal", "true")
-    dlg.setAttribute("aria-label", "רגרסיות E2E")
+    dlg.setAttribute("aria-label", "E2E regressions")
     const top = el("div", "qa-top")
-    const heading = el("h2", "qa-heading", "רגרסיות E2E")
+    const heading = el("h2", "qa-heading", "E2E regressions")
     const progress = el("span", "qa-progress")
     heading.appendChild(progress)
     top.appendChild(heading)
     const x = el("button", "qa-close", "✕")
     x.type = "button"
-    x.setAttribute("aria-label", "סגור")
+    x.setAttribute("aria-label", "Close")
     x.addEventListener("click", close)
     top.appendChild(x)
     const body = el("div", "qa-body")
-    body.appendChild(el("p", "qa-empty", "טוען…"))
+    body.appendChild(el("p", "qa-empty", "Loading…"))
     dlg.appendChild(top)
     dlg.appendChild(body)
     overlay.appendChild(dlg)
@@ -153,7 +156,7 @@ if (!window.__boardsE2e) {
     try {
       const t = await load()
       setCount(t.length)
-      progress.textContent = t.length + " פתוחות"
+      progress.textContent = t.length + " open"
       render(body, t)
       if (o.scroll) body.scrollTop = o.scroll
     } catch (e) {

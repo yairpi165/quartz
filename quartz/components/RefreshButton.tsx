@@ -2,15 +2,15 @@ import { QuartzComponentConstructor, QuartzComponentProps } from "./types"
 import { classNames } from "../util/lang"
 
 // Reload button for the phone: the page is locked (only the columns scroll), so pull-to-refresh never
-// fires. It sits at the physical top-left of the top bar, away from the sidebar / QA / E2E / search
-// buttons on the right, and is hidden above the phone breakpoint.
+// fires. It sits at the top-right of the top bar, away from the sidebar / QA / E2E / search buttons on
+// the left, and is hidden above the phone breakpoint.
 function RefreshButton({ displayClass }: QuartzComponentProps) {
   return (
     <button
       type="button"
       class={classNames(displayClass, "boards-refresh-button")}
-      aria-label="רענון הדף"
-      title="רענון הדף"
+      aria-label="Refresh page"
+      title="Refresh page"
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M21 12a9 9 0 1 1-2.64-6.36" />
@@ -34,7 +34,7 @@ RefreshButton.css = `
 .boards-refresh-button {
   position: fixed;
   top: 0.75rem;
-  left: 0.75rem;
+  right: 0.75rem;
   z-index: 10;
   display: none;
   place-items: center;

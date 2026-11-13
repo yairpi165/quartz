@@ -8,6 +8,7 @@ import BoardsDecor, {
   STATUS_ORDER,
   missingColumns,
   STATUS_LABELS,
+  isMouse,
 } from "./BoardsDecor"
 import { opensInPopup } from "./TaskPopup"
 
@@ -37,7 +38,7 @@ function runDecor(rows: any[]) {
     querySelector: () => null,
     addEventListener: (name: string, fn: () => void) => (listeners[name] = fn),
   }
-  const win: any = { addEventListener: () => {} }
+  const win: any = { addEventListener: () => {}, matchMedia: () => ({ matches: false }) }
   new Function(
     "document",
     "window",
@@ -83,7 +84,7 @@ describe("BoardsDecor sim-qa column (CV-22)", () => {
     assert.strictEqual(simBadge(0, 0), "[sim] 0 / [device] 0")
   })
 
-  test("columnStatus maps the Hebrew label back to the status and lowercases the rest", () => {
+  test("columnStatus maps the site label back to the status and lowercases the rest", () => {
     assert.strictEqual(columnStatus(" sim-qa "), "sim-qa")
     assert.strictEqual(columnStatus(SIM_QA_LABEL), "sim-qa")
     assert.strictEqual(columnStatus("QA"), "qa")
@@ -137,7 +138,7 @@ describe("BoardsDecor sim-qa column (CV-22)", () => {
         Decor.afterDOMLoaded,
       )(
         doc,
-        { addEventListener: () => {} },
+        { addEventListener: () => {}, matchMedia: () => ({ matches: false }) },
         () => {},
         () => ({}),
       )
@@ -148,7 +149,7 @@ describe("BoardsDecor sim-qa column (CV-22)", () => {
     assert.strictEqual(simCol.dataset.status, "sim-qa")
     assert.strictEqual(simName.textContent, SIM_QA_LABEL)
     assert.strictEqual(qaCol.dataset.status, "qa")
-    // CV-26: every status column shows its Hebrew label
+    // CV-26: every status column shows its site label
     assert.strictEqual(qaName.textContent, STATUS_LABELS.qa)
     assert.deepStrictEqual(fetched, ["/api/sim"])
     assert.strictEqual(card.added.length, 1)
@@ -178,7 +179,7 @@ describe("BoardsDecor sim-qa column (CV-22)", () => {
         Decor.afterDOMLoaded,
       )(
         doc,
-        { addEventListener: () => {} },
+        { addEventListener: () => {}, matchMedia: () => ({ matches: false }) },
         () => {},
         () => ({}),
       )
@@ -206,9 +207,13 @@ describe("empty status columns (CV-25)", () => {
     ])
   })
   test("a status after the last present one goes at the end", () => {
-    assert.deepStrictEqual(missingColumns(["backlog", "todo", "in-progress", "in-review", "sim-qa", "qa", "reopened"], STATUS_ORDER), [
-      { status: "done", before: null },
-    ])
+    assert.deepStrictEqual(
+      missingColumns(
+        ["backlog", "todo", "in-progress", "in-review", "sim-qa", "qa", "reopened"],
+        STATUS_ORDER,
+      ),
+      [{ status: "done", before: null }],
+    )
   })
   test("a board grouped by something else is left alone", () => {
     assert.deepStrictEqual(missingColumns(["backlog", "VELA-12 Epic"], STATUS_ORDER), [])
@@ -239,5 +244,136 @@ describe("status labels (CV-26)", () => {
       assert.strictEqual(columnStatus(label, STATUS_LABELS), status)
       assert.strictEqual(columnStatus(status, STATUS_LABELS), status)
     }
+  })
+})
+
+describe("wheel device (CV-27)", () => {
+  const ev = (o: Partial<Parameters<typeof isMouse>[0]>) => ({
+    deltaX: 0,
+    deltaY: 0,
+    deltaMode: 0,
+    ...o,
+  })
+  test("line and page deltas are a mouse", () => {
+    assert.strictEqual(isMouse(ev({ deltaY: 3, deltaMode: 1 })), true)
+    assert.strictEqual(isMouse(ev({ deltaY: 1, deltaMode: 2 })), true)
+  })
+  test("macOS mouse steps (multiples of 4.000244140625 px) are a mouse, even with a -3x wheelDelta", () => {
+    assert.strictEqual(isMouse(ev({ deltaY: 4.000244140625, wheelDeltaY: -12 })), true)
+    assert.strictEqual(isMouse(ev({ deltaY: -12.000732421875, wheelDeltaY: 36 })), true)
+    // shift + wheel on a Mac: the step moves to deltaX
+    assert.strictEqual(isMouse(ev({ deltaX: 8.00048828125, wheelDeltaX: -24 })), true)
+  })
+  test("a 120-per-notch wheelDelta that breaks the trackpad ratio is a mouse", () => {
+    assert.strictEqual(isMouse(ev({ deltaY: 100, wheelDeltaY: -120 })), true)
+    assert.strictEqual(isMouse(ev({ deltaX: 100, wheelDeltaX: -120 })), true)
+  })
+  test("trackpad deltas (wheelDelta = -3 x delta) are not a mouse, also at a page zoom", () => {
+    assert.strictEqual(isMouse(ev({ deltaY: 4, wheelDeltaY: -12 })), false)
+    assert.strictEqual(
+      isMouse(ev({ deltaX: -7, deltaY: 1, wheelDeltaX: 21, wheelDeltaY: -3 })),
+      false,
+    )
+    // 110% zoom: the DOM delta is divided by the zoom, wheelDelta is not
+    assert.strictEqual(isMouse(ev({ deltaY: 9.090909, wheelDeltaY: -30 })), false)
+  })
+  test("without wheelDelta (Firefox on a Mac): a whole coarse single-axis step is a mouse", () => {
+    assert.strictEqual(isMouse(ev({ deltaY: 48 })), true)
+    assert.strictEqual(isMouse(ev({ deltaY: 2.5 })), false)
+    assert.strictEqual(isMouse(ev({ deltaX: 3, deltaY: 6 })), false)
+  })
+})
+
+describe("wheel listener (CV-27)", () => {
+  // a board whose scrollLeft cannot move (hidden, snapping, or clamped by the browser)
+  const setup = (opts: { connected?: boolean; stuck?: boolean } = {}) => {
+    let wheelFn: ((e: any) => void) | null = null
+    const frames: Array<() => void> = []
+    let left = 0
+    const board: any = {
+      isConnected: opts.connected ?? true,
+      clientWidth: 900,
+      scrollWidth: 2400,
+      get scrollLeft() {
+        return left
+      },
+      set scrollLeft(v: number) {
+        if (!opts.stuck) left = v
+      },
+      dataset: {},
+      __boardsFade: false,
+      addEventListener: (name: string, fn: any) => {
+        if (name === "wheel") wheelFn = fn
+      },
+      scrollBy: () => {},
+      querySelectorAll: () => [],
+      querySelector: () => null,
+    }
+    const doc: any = {
+      querySelectorAll: (sel: string) => (sel === ".bases-board" ? [board] : []),
+      querySelector: () => null,
+      addEventListener: () => {},
+    }
+    new Function(
+      "document",
+      "window",
+      "requestAnimationFrame",
+      "cancelAnimationFrame",
+      "getComputedStyle",
+      "localStorage",
+      Decor.afterDOMLoaded,
+    )(
+      doc,
+      { addEventListener: () => {}, matchMedia: () => ({ matches: false }) },
+      (f: () => void) => (frames.push(f), frames.length),
+      () => {},
+      () => ({ scrollSnapType: "none", direction: "ltr" }),
+      { getItem: () => null },
+    )
+    const wheel = (o: any) => {
+      let prevented = false
+      wheelFn!({
+        deltaX: 0,
+        deltaY: 0,
+        deltaMode: 0,
+        timeStamp: 1000,
+        target: {},
+        preventDefault: () => (prevented = true),
+        ...o,
+      })
+      return prevented
+    }
+    const drain = (max = 500) => {
+      let n = 0
+      while (frames.length && n++ < max) frames.shift()!()
+      return n
+    }
+    return { board, wheel, drain, left: () => left }
+  }
+  test("a mouse notch moves the board sideways, eased to the target, then the loop stops", () => {
+    const t = setup()
+    assert.strictEqual(t.wheel({ deltaY: 3, deltaMode: 1 }), true)
+    const n = t.drain()
+    assert.ok(n < 500, "loop stopped")
+    assert.strictEqual(t.left(), 120)
+  })
+  test("the loop stops when the board cannot move or is gone", () => {
+    const stuck = setup({ stuck: true })
+    stuck.wheel({ deltaY: 3, deltaMode: 1 })
+    assert.ok(stuck.drain() < 5)
+    const gone = setup({ connected: false })
+    gone.wheel({ deltaY: 3, deltaMode: 1 })
+    assert.ok(gone.drain() < 5)
+  })
+  test("a trackpad vertical swipe is left to the column; a sideways one moves the board 1:1", () => {
+    const t = setup()
+    assert.strictEqual(t.wheel({ deltaY: 6, wheelDeltaY: -18 }), false)
+    assert.strictEqual(t.wheel({ deltaX: 7, wheelDeltaX: -21, timeStamp: 2000 }), true)
+    assert.strictEqual(t.left(), 7)
+  })
+  test("when every column fits, the mouse wheel is left to the column", () => {
+    const t = setup()
+    t.board.scrollWidth = 900
+    assert.strictEqual(t.wheel({ deltaY: 3, deltaMode: 1 }), false)
   })
 })

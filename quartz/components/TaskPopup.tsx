@@ -4,7 +4,7 @@ import { QuartzComponentConstructor } from "./types"
 // a page change, so the board keeps its tab, its sideways scroll and each column's scroll. A desktop
 // popup is centred; on a phone it covers the screen. Close with ✕, Esc, a click on the backdrop, or the
 // browser / phone back gesture (opening pushes a history entry that only carries the task's address, so
-// back closes it). "פתח בדף מלא" still goes to the full page. Links inside the popup open in the popup.
+// back closes it). "Open full page" still goes to the full page. Links inside the popup open in the popup.
 // Like the QA popup, the overlay hangs on <html>, so an in-place refresh of <body> does not remove it.
 // The router's popstate handler asks window.__boardsPopstate first (quartz/components/scripts/spa.inline.ts).
 
@@ -59,10 +59,11 @@ if (!window.__boardsTaskPopup) {
       if (h && !h.startsWith("#")) a.setAttribute("href", new URL(h, url).href)
     })
     root.querySelectorAll("[src]").forEach((n) => n.setAttribute("src", new URL(n.getAttribute("src"), url).href))
-    root.querySelectorAll("p, li, blockquote, article h2, article h3, article h4").forEach((n) => {
+    if (window.__boardsTitleDir) root.querySelectorAll("h1").forEach(window.__boardsTitleDir)
+    root.querySelectorAll("p, li, blockquote, article h2, article h3, article h4, td, th, .note-properties-value").forEach((n) => {
       if (!n.hasAttribute("dir")) n.setAttribute("dir", "auto")
     })
-    // same tags as the task page (BoardsDecor: status label, "מאמץ: L")
+    // same tags as the task page (BoardsDecor: status label, "Effort: L")
     if (window.__boardsTagProps) window.__boardsTagProps(root)
     if (window.__boardsEmptySections) window.__boardsEmptySections(root)
   }
@@ -71,7 +72,7 @@ if (!window.__boardsTaskPopup) {
     const seq = ++loadSeq
     const body = overlay.querySelector(".boards-task-body")
     overlay.querySelector(".boards-task-full").href = href
-    body.replaceChildren(el("p", "boards-task-status", "טוען…"))
+    body.replaceChildren(el("p", "boards-task-status", "Loading…"))
     overlay.querySelector(".boards-task-name").textContent = ""
     body.scrollTop = 0
     const url = new URL(href, location.href)
@@ -92,14 +93,17 @@ if (!window.__boardsTaskPopup) {
         box.appendChild(document.importNode(art, true))
         decorate(box, url)
         body.replaceChildren(box)
+        if (window.__boardsRtlItems) window.__boardsRtlItems(box)
         const h = box.querySelector("article h1") || box.querySelector(".article-title")
-        overlay.querySelector(".boards-task-panel").setAttribute("aria-label", h ? h.textContent.trim() : "משימה")
+        overlay.querySelector(".boards-task-panel").setAttribute("aria-label", h ? h.textContent.trim() : "Task")
         // the bar keeps the task's id and name in sight while the body scrolls
-        overlay.querySelector(".boards-task-name").textContent = h ? h.textContent.trim() : ""
+        const name = overlay.querySelector(".boards-task-name")
+        name.textContent = h ? h.textContent.trim() : ""
+        if (window.__boardsTitleDir) window.__boardsTitleDir(name)
       })
       .catch(() => {
         if (seq !== loadSeq || !overlay) return
-        body.replaceChildren(el("p", "boards-task-status", "לא הצלחתי לטעון את המשימה. אפשר לפתוח אותה בדף מלא."))
+        body.replaceChildren(el("p", "boards-task-status", "Could not load the task. Open it as a full page."))
       })
   }
 
@@ -112,10 +116,10 @@ if (!window.__boardsTaskPopup) {
       panel.setAttribute("aria-modal", "true")
       const bar = el("div", "boards-task-bar")
       const name = el("span", "boards-task-name")
-      const full = el("a", "boards-task-full", "פתח בדף מלא")
+      const full = el("a", "boards-task-full", "Open full page")
       const x = el("button", "boards-task-close", "✕")
       x.type = "button"
-      x.setAttribute("aria-label", "סגירה")
+      x.setAttribute("aria-label", "Close")
       x.addEventListener("click", close)
       bar.append(name, full, x)
       panel.append(bar, el("div", "boards-task-body"))
@@ -318,8 +322,8 @@ html.boards-task-open, html.boards-task-open body { overflow: hidden; }
 .boards-task-overlay { font-family: var(--bodyFont); color: var(--darkgray); }
 .boards-task-content :is(h1, h2, h3, h4) { font-family: var(--headerFont); color: var(--dark); }
 .boards-task-content :is(ul, ol) { padding-inline-start: 1.5rem; }
-/* an English task item is LTR inside an RTL list: indent the item itself (on its own start side), so the
-   checkbox, which hangs before the text, stays inside the panel */
+/* a task item (English or Hebrew) is indented on its own start side, so the checkbox, which hangs
+   before the text, stays inside the panel */
 .boards-task-content ul.contains-task-list { padding-inline: 0; }
 .boards-task-content li:has(> input[type="checkbox"]) { list-style-type: none; padding-inline-start: 1.5rem; }
 .boards-task-content li:has(> input[type="checkbox"]:checked) {

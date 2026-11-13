@@ -9,8 +9,8 @@ function SearchShortcut({ displayClass }: QuartzComponentProps) {
     <button
       type="button"
       class={classNames(displayClass, "boards-search-shortcut")}
-      aria-label="חיפוש"
-      title="חיפוש"
+      aria-label="Search"
+      title="Search"
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
         <circle cx="11" cy="11" r="7" />

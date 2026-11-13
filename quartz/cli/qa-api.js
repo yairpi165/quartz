@@ -66,13 +66,15 @@ export function callService({ method, path, json }) {
           try {
             resolve({ status: res.statusCode, json: JSON.parse(data) })
           } catch {
-            resolve({ status: 502, json: { error: "שירות ה-QA החזיר תשובה לא תקינה" } })
+            resolve({ status: 502, json: { error: "The QA service returned an invalid response" } })
           }
         })
       },
     )
     req.on("timeout", () => req.destroy(new Error("timeout")))
-    req.on("error", () => resolve({ status: 502, json: { error: "שירות ה-QA לא פועל" } }))
+    req.on("error", () =>
+      resolve({ status: 502, json: { error: "The QA service is not running" } }),
+    )
     if (body !== undefined) req.write(body)
     req.end()
   })
@@ -151,7 +153,7 @@ export async function handleQaApi(req, res, { port, call = callService } = {}) {
     if (verdict !== "pass" && verdict !== "fail")
       return (send(res, 400, { error: "bad verdict" }), true)
     if (verdict === "fail" && (typeof reason !== "string" || !reason.trim()))
-      return (send(res, 400, { error: "הסיבה חובה כשהבדיקה לא עברה" }), true)
+      return (send(res, 400, { error: "A reason is required when the check fails" }), true)
     const r = await call({
       method: "POST",
       path: "/qa/mark",

@@ -1,11 +1,11 @@
 # yaml-language-server: $schema=./quartz/plugins/quartz-plugins.schema.json
 configuration:
-  pageTitle: "לוחות פרויקטים"
+  pageTitle: "Project Boards"
   pageTitleSuffix: ""
   enableSPA: true
   enablePopovers: true
   analytics: null
-  locale: he-IL
+  locale: en-GB
   baseUrl: localhost:8484
   ignorePatterns:
     - ".obsidian"

@@ -12,8 +12,8 @@ function SidebarToggle({ displayClass }: QuartzComponentProps) {
     <button
       type="button"
       class={classNames(displayClass, "boards-sidebar-toggle")}
-      aria-label="הצג או הסתר את התפריט"
-      title="הצג או הסתר את התפריט"
+      aria-label="Show or hide the menu"
+      title="Show or hide the menu"
     >
       ☰
     </button>

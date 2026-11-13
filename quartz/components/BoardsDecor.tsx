@@ -9,32 +9,32 @@ import { QuartzComponentConstructor } from "./types"
 //   - columns: tagged with their status so qa / in-review stand out and done is muted
 //   - board: a fade on the side that has more columns off screen (the scrollbar is hidden)
 //   - table: the id-only Name column, dates on one line
-//   - task page: back link to the board, no duplicated title, English paragraphs read left to right
+//   - task page: back link to the board, no duplicated title, Hebrew paragraphs read right to left
 // What the cards script stores in data-kind for a Kind cell's text (kept in sync by boardsDecor.test.ts).
 export function kindOf(text: string): string {
   return text.trim().toLowerCase()
 }
 
 // The sim-qa column (CV-22): its header shows this label; the status stays "sim-qa" in data-status.
-export const SIM_QA_LABEL = "QA סימולטור"
+export const SIM_QA_LABEL = "Sim QA"
 // What a status is called on the site (CV-26: column headers, table cells, task tags, popups). The vault
 // keeps the English keys; data-status / data-value keep them too.
 export const STATUS_LABELS: Record<string, string> = {
-  backlog: "ממתין",
-  todo: "לביצוע",
-  "in-progress": "בעבודה",
-  "in-review": "בסקירת קוד",
+  backlog: "Backlog",
+  todo: "To do",
+  "in-progress": "In progress",
+  "in-review": "In review",
   "sim-qa": SIM_QA_LABEL,
-  qa: "QA מכשיר",
-  reopened: "נפתח מחדש",
-  done: "הושלם",
-  cancelled: "בוטל",
+  qa: "Device QA",
+  reopened: "Reopened",
+  done: "Done",
+  cancelled: "Cancelled",
 }
 // A column header's text (the plugin's raw status, or a label this script already put there) -> status.
 // Self-contained (the labels are passed in) because the script embeds it with toString().
 export function columnStatus(text: string, labels: Record<string, string> = {}): string {
   const s = text.trim().toLowerCase()
-  if (s === "qa סימולטור") return "sim-qa"
+  if (s === "sim qa") return "sim-qa"
   for (const k of Object.keys(labels)) if (labels[k].toLowerCase() === s) return k
   return s
 }
@@ -61,6 +61,41 @@ export function missingColumns(
 // The count line on a sim-qa card: what is left for the simulator and for Yair's device.
 export function simBadge(sim: number, device: number): string {
   return "[sim] " + sim + " / [device] " + device
+}
+
+// Whether a wheel event comes from a mouse wheel (true) or a trackpad (false), from the first event of a
+// gesture (CV-27). Self-contained because the script embeds it with toString().
+//   - line / page deltas: a mouse (Firefox on Windows / Linux)
+//   - macOS (Chrome, Safari): a mouse wheel's steps are multiples of 0.1 line in 16.16 fixed point, so
+//     the pixel delta is a whole multiple of 4.000244140625; a trackpad sends plain pixels
+//   - otherwise the legacy wheelDelta: a trackpad's is -3 x delta (a ratio, so page zoom does not break
+//     it); a mouse notch is 120 per notch on one axis or breaks the ratio
+//   - no wheelDelta (Firefox on a Mac): a mouse notch is one whole, coarse, single-axis step
+export function isMouse(e: {
+  deltaX: number
+  deltaY: number
+  deltaMode: number
+  wheelDeltaX?: number
+  wheelDeltaY?: number
+}): boolean {
+  if (e.deltaMode === 1 || e.deltaMode === 2) return true
+  const dx = e.deltaX
+  const dy = e.deltaY
+  // no inner functions: the bundler would wrap them in a helper the embedded copy does not have
+  const STEP = 4.000244140625
+  const one = dx || dy
+  if ((!dx || !dy) && Math.abs(one - Math.round(one / STEP) * STEP) < 1e-6) return true
+  const wx = e.wheelDeltaX || 0
+  const wy = e.wheelDeltaY || 0
+  if (wx || wy) {
+    const padX = dx ? Math.abs(wx / dx + 3) < 0.6 : Math.abs(wx) <= 2
+    const padY = dy ? Math.abs(wy / dy + 3) < 0.6 : Math.abs(wy) <= 2
+    const pad = padX && padY
+    const notch = wx % 120 === 0 && wy % 120 === 0 && (!wx || !wy)
+    return !pad || notch
+  }
+  const d = dx || dy
+  return (!dx || !dy) && Number.isInteger(d) && Math.abs(d) >= 40
 }
 
 function BoardsDecor() {
@@ -130,7 +165,7 @@ if (!window.__boardsDecor) {
         body.className = "bases-board-column-body"
         const hint = document.createElement("div")
         hint.className = "boards-empty-hint"
-        hint.textContent = "אין משימות"
+        hint.textContent = "No tasks"
         body.appendChild(hint)
         col.append(head, body)
         board.insertBefore(col, before ? byStatus[before] : null)
@@ -181,16 +216,16 @@ if (!window.__boardsDecor) {
   }
   // table column titles on the site (CV-26); unknown columns keep the plugin's text
   const HEADS = {
-    "file.name": "מזהה",
-    title: "משימה",
+    "file.name": "ID",
+    title: "Task",
     epic: "Epic",
-    status: "סטטוס",
-    priority: "עדיפות",
-    effort: "מאמץ",
-    owner: "אחראי",
-    updated: "עודכן",
-    created: "נוצר",
-    done: "הושלם ב-",
+    status: "Status",
+    priority: "Priority",
+    effort: "Effort",
+    owner: "Owner",
+    updated: "Updated",
+    created: "Created",
+    done: "Done on",
   }
   // done / total per epic id, counted from the board view's cards (every non-cancelled task is there)
   const epicProgress = () => {
@@ -260,7 +295,7 @@ if (!window.__boardsDecor) {
         gr.dataset.none = none ? "1" : ""
         let text = raw.replace(/^\\[\\[|\\]\\]$/g, "")
         if (key === "status") text = LABELS[raw.toLowerCase()] || raw
-        if (none) text = key === "epic" ? "ללא epic" : "ללא"
+        if (none) text = key === "epic" ? "No epic" : "None"
         if (label.textContent !== text) label.textContent = text
         if (key === "epic" && !none) {
           progress = progress || epicProgress()
@@ -272,7 +307,7 @@ if (!window.__boardsDecor) {
               tag.className = "boards-epic-progress"
               gr.querySelector("td").appendChild(tag)
             }
-            tag.textContent = "הושלמו " + p.done + " מתוך " + p.total
+            tag.textContent = p.done + " of " + p.total + " done"
           }
         }
       })
@@ -288,13 +323,34 @@ if (!window.__boardsDecor) {
       }
     })
   }
+  // A title (task heading, card or table title, popup bar) that holds any Hebrew reads right to left: it
+  // often starts with "CV-18 · " or an English word, so dir=auto would pick left to right.
+  const titleDir = (n) => {
+    const want = /[\\u0590-\\u05FF]/.test(n.textContent) ? "rtl" : "auto"
+    if (n.getAttribute("dir") !== want) n.setAttribute("dir", want)
+  }
+  window.__boardsTitleDir = titleDir
   const bidi = () => {
+    document.querySelectorAll(".center article h1, .page-header .article-title").forEach(titleDir)
     document
-      .querySelectorAll(".center article p, .center article li, .center article blockquote, .center article h2, .center article h3, .center article h4")
+      .querySelectorAll(
+        ".center article :is(p, li, blockquote, h2, h3, h4, td, th), .note-properties-value, .search .search-bar",
+      )
       .forEach((n) => {
         if (!n.hasAttribute("dir")) n.setAttribute("dir", "auto")
       })
+    rtlItems(document)
   }
+  // A Hebrew list item (dir=auto resolved to rtl) gets a class for the CSS: the build's CSS minifier
+  // rewrites :dir() into :lang(), which never matches on this lang="en" site.
+  const rtlItems = (root) => {
+    root.querySelectorAll("li[dir]").forEach((li) => {
+      // computed style, not :dir() (older Safari / Chrome throw on it); needs the node in the page
+      const rtl = getComputedStyle(li).direction === "rtl"
+      if (li.classList.contains("boards-rtl") !== rtl) li.classList.toggle("boards-rtl", rtl)
+    })
+  }
+  window.__boardsRtlItems = rtlItems
   // task page / popup: a template heading with nothing under it (empty Summary, Context, ...) is hidden
   const emptySections = (root) => {
     root.querySelectorAll("article h2").forEach((h) => {
@@ -352,8 +408,8 @@ if (!window.__boardsDecor) {
           c.textContent = text
           return c
         }
-        parts.push(chip(nq ? nq + " לבדיקת QA" : "אין QA פתוח", nq > 0))
-        if (ne) parts.push(chip(ne + " רגרסיות E2E", true))
+        parts.push(chip(nq ? nq + " waiting for QA" : "No open QA", nq > 0))
+        if (ne) parts.push(chip(ne + " E2E regression" + (ne === 1 ? "" : "s"), true))
         meta.replaceChildren(...parts)
       })
     })
@@ -409,7 +465,7 @@ if (!window.__boardsDecor) {
             doneCap()
           })
         }
-        more.textContent = "הצג את כל " + sorted.length
+        more.textContent = "Show all " + sorted.length
         body.appendChild(more)
       } else if (more) more.remove()
     })
@@ -421,13 +477,14 @@ if (!window.__boardsDecor) {
     if (h && / board$/i.test(h.textContent.trim())) h.textContent = h.textContent.trim().replace(/ board$/i, "")
   }
   // English runs inside a Hebrew title are isolated, so "/retry" or "Face ID" keep their own order; a run
-  // never ends on punctuation, so brackets and colons around it stay in the Hebrew flow and mirror right
+  // never ends on punctuation, so brackets and colons around it stay in the Hebrew flow and mirror right.
+  // The title link gets dir=auto (isolateTitles), so a Hebrew title reads right to left on the LTR site.
   const LATIN = /[A-Za-z0-9\\/](?:[\\w\\/.+#:'-]*[A-Za-z0-9])?(?:\\s+[A-Za-z0-9\\/](?:[\\w\\/.+#:'-]*[A-Za-z0-9])?)*/g
   const isolate = (el) => {
     if (!el || el.dataset.bdi === "1" || el.querySelector("bdi")) return
     el.dataset.bdi = "1"
     Array.from(el.childNodes).forEach((node) => {
-      if (node.nodeType !== 3 || !/[֐-׿]/.test(node.nodeValue)) return
+      if (node.nodeType !== 3 || !/[\\u0590-\\u05FF]/.test(node.nodeValue)) return
       const text = node.nodeValue
       const frag = document.createDocumentFragment()
       let last = 0
@@ -445,7 +502,11 @@ if (!window.__boardsDecor) {
     })
   }
   const isolateTitles = () => {
-    document.querySelectorAll(".bases-board-card > a, .bases-table td[data-col='title'] a").forEach(isolate)
+    document.querySelectorAll(".bases-table td[data-col='title']").forEach(titleDir)
+    document.querySelectorAll(".bases-board-card > a, .bases-table td[data-col='title'] a").forEach((a) => {
+      titleDir(a)
+      isolate(a)
+    })
   }
   const title = () => {
     const t = document.querySelector(".page-header .article-title")
@@ -455,7 +516,7 @@ if (!window.__boardsDecor) {
     t.classList.toggle("boards-dup-title", !!h && norm(h.textContent).includes(norm(t.textContent)))
   }
   // note properties as tags: data-key / data-value carry the raw vault values (CSS keys on them), the
-  // text shows the site's words (status label, "מאמץ: L"). data-raw keeps the raw value across re-runs.
+  // text shows the site's words (status label, "Effort: L"). data-raw keeps the raw value across re-runs.
   const tagProps = (root) => {
     root.querySelectorAll(".note-properties").forEach((d) => {
       d.open = true
@@ -470,18 +531,20 @@ if (!window.__boardsDecor) {
         // write only on change: the search-preview observer re-runs this on every mutation
         let text = null
         if (r.dataset.key === "status" && LABELS[raw]) text = LABELS[raw]
-        if (r.dataset.key === "effort" && raw) text = "מאמץ: " + raw.toUpperCase()
+        if (r.dataset.key === "effort" && raw) text = "Effort: " + raw.toUpperCase()
         if (text !== null && v.textContent !== text) v.textContent = text
       })
     })
   }
   const props = () => tagProps(document)
   window.__boardsTagProps = tagProps
-  // search preview (rendered by the search plugin outside .center): same reading direction and tags
+  // search preview and hover popover (rendered outside .center): same reading direction and tags
   const preview = (root) => {
-    root.querySelectorAll("p, li, blockquote, h1, h2, h3, h4").forEach((n) => {
+    root.querySelectorAll("h1").forEach(titleDir)
+    root.querySelectorAll("p, li, blockquote, h2, h3, h4, td, th, .note-properties-value").forEach((n) => {
       if (!n.hasAttribute("dir")) n.setAttribute("dir", "auto")
     })
+    rtlItems(root)
     tagProps(root)
   }
   // search results: the task id and its board under the title (the plugin shows the title only)
@@ -492,6 +555,10 @@ if (!window.__boardsDecor) {
       if (m) names[m[1].toLowerCase()] = a.textContent.trim()
     })
     root.querySelectorAll("a.result-card").forEach((card) => {
+      card.querySelectorAll(":scope > h3").forEach(titleDir)
+      card.querySelectorAll(":scope > p").forEach((n) => {
+        if (!n.hasAttribute("dir")) n.setAttribute("dir", "auto")
+      })
       if (card.querySelector(".boards-hit-meta")) return
       const slug = (card.id || card.getAttribute("href") || "").toLowerCase()
       const m = /projects\\/([^/]+)\\/tasks\\/([a-z]+-\\d+)/.exec(slug)
@@ -514,12 +581,18 @@ if (!window.__boardsDecor) {
     let pending = false
     new MutationObserver((muts) => {
       if (pending) return
-      const box = muts.map((m) => m.target && m.target.closest && m.target.closest(".preview-container, .results-container")).find(Boolean)
+      // the hover popover is built off-page and added to <body> whole, so check added nodes too
+      const BOX = ".preview-container, .results-container, .popover"
+      const box = muts.some(
+        (m) =>
+          (m.target && m.target.closest && m.target.closest(BOX)) ||
+          Array.from(m.addedNodes).some((n) => n.nodeType === 1 && (n.matches(BOX) || n.querySelector(BOX))),
+      )
       if (!box) return
       pending = true
       requestAnimationFrame(() => {
         pending = false
-        document.querySelectorAll(".preview-container").forEach(preview)
+        document.querySelectorAll(".preview-container, .popover-inner").forEach(preview)
         document.querySelectorAll(".results-container").forEach(hits)
       })
     }).observe(document.documentElement, { childList: true, subtree: true })
@@ -541,16 +614,14 @@ if (!window.__boardsDecor) {
     const link = document.createElement("a")
     link.className = "boards-back internal"
     link.href = active.getAttribute("href")
-    link.textContent = "→ חזרה ללוח " + active.textContent.trim()
+    link.textContent = "← Back to " + active.textContent.trim()
     head.insertBefore(link, head.querySelector(".popover-hint"))
   }
   const fade = (b) => {
     const max = b.scrollWidth - b.clientWidth
-    const pos = Math.abs(b.scrollLeft)
-    const rtl = getComputedStyle(b).direction === "rtl"
-    const more = (side) => (side === "end" ? pos < max - 1 : pos > 1)
-    const left = rtl ? more("end") : more("start")
-    const right = rtl ? more("start") : more("end")
+    const pos = b.scrollLeft
+    const left = pos > 1
+    const right = pos < max - 1
     if (left) b.dataset.moreLeft = "1"
     else delete b.dataset.moreLeft
     if (right) b.dataset.moreRight = "1"
@@ -561,6 +632,7 @@ if (!window.__boardsDecor) {
       if (!b.__boardsFade) {
         b.__boardsFade = true
         b.addEventListener("scroll", () => fade(b), { passive: true })
+        wheel(b)
       }
       fade(b)
     })
@@ -603,24 +675,97 @@ if (!window.__boardsDecor) {
     startAtFirst()
     requestAnimationFrame(fades)
   }
-  // A sideways wheel / trackpad swipe (or shift + wheel) over the cards must move the whole board. The
-  // browser latches the gesture to the column body (it scrolls vertically) and drops the horizontal part,
-  // so route it to the board by hand.
-  document.addEventListener(
-    "wheel",
-    (e) => {
-      if (e.ctrlKey || !e.target.closest) return
-      const board = e.target.closest(".bases-board")
-      if (!board) return
-      const dx = e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX
-      if (!dx || (!e.shiftKey && Math.abs(e.deltaX) <= Math.abs(e.deltaY))) return
-      e.preventDefault()
-      // reversed on purpose (CV-26, Yair): on this RTL board the browser's direction felt backwards; the
-      // column order is unchanged, only the way a desktop swipe moves the board. Phone swipes stay native.
-      board.scrollLeft -= dx
-    },
-    { passive: false },
-  )
+  // Sideways scrolling on a board feels the same with a mouse and a trackpad (CV-27, Yair):
+  //   - mouse wheel: always moves the board (down = the next columns), eased so a notch glides instead of
+  //     jumping; shift + wheel scrolls the column under the pointer instead
+  //   - trackpad: a sideways swipe moves the board 1:1 (the OS already sends smooth, inertial deltas), a
+  //     vertical swipe scrolls the column natively
+  // The axis and the device are decided once per gesture (a gap of 150 ms starts a new one), so a slightly
+  // diagonal swipe does not flip between board and column. The listener sits on each board, not on the
+  // document, so the rest of the page keeps the browser's fast scrolling. Phone swipes stay native.
+  // localStorage "boards-wheel-log" = "1" logs every event to the console (to tune the mouse test).
+  const WHEEL_GAP = 150
+  const isMouse = ${isMouse.toString()}
+  const wheel = (board) => {
+    let last = -1e9
+    let mouse = false
+    let axis = null
+    let target = null
+    let frame = 0
+    let log = false
+    try {
+      log = localStorage.getItem("boards-wheel-log") === "1"
+    } catch (err) {}
+    // eases toward target; stops when it is there, or cannot get there (board hidden or replaced, a
+    // narrower board, snapping), so the loop never spins
+    const glide = () => {
+      frame = 0
+      if (target === null) return
+      if (!board.isConnected || !board.clientWidth) return void (target = null)
+      target = Math.max(0, Math.min(board.scrollWidth - board.clientWidth, target))
+      const before = board.scrollLeft
+      const d = target - before
+      if (Math.abs(d) < 1) {
+        board.scrollLeft = target
+        target = null
+        return
+      }
+      // at least a pixel a frame, in case the browser rounds scrollLeft
+      board.scrollLeft = before + Math.sign(d) * Math.max(1, Math.abs(d) * 0.25)
+      if (board.scrollLeft === before) return void (target = null)
+      frame = requestAnimationFrame(glide)
+    }
+    const stop = () => {
+      target = null
+      if (frame) cancelAnimationFrame(frame)
+      frame = 0
+    }
+    board.addEventListener(
+      "wheel",
+      (e) => {
+        if (e.ctrlKey) return
+        const unit = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? board.clientWidth : 1
+        const dx = e.deltaX * unit
+        const dy = e.deltaY * unit
+        if (!dx && !dy) return
+        if (e.timeStamp - last > WHEEL_GAP) {
+          mouse = isMouse(e)
+          axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y"
+        }
+        last = e.timeStamp
+        if (log) console.log("[boards-wheel]", { dx: e.deltaX, dy: e.deltaY, mode: e.deltaMode, wx: e.wheelDeltaX, wy: e.wheelDeltaY, shift: e.shiftKey, mouse, axis })
+        if (mouse) {
+          // macOS turns shift + wheel into a sideways delta; either way it is one step of the wheel
+          const step = dy || dx
+          if (e.shiftKey) {
+            const body = e.target.closest && e.target.closest(".bases-board-column-body")
+            if (!body) return
+            e.preventDefault()
+            body.scrollTop += step
+            return
+          }
+          const max = board.scrollWidth - board.clientWidth
+          // every column fits: leave the wheel to the column under the pointer
+          if (max <= 0) return
+          e.preventDefault()
+          // a snapping board (narrow window) snaps every write back: let the browser glide to the column
+          if (getComputedStyle(board).scrollSnapType.indexOf("mandatory") >= 0) {
+            board.scrollBy({ left: Math.sign(step) * board.clientWidth * 0.5, behavior: "smooth" })
+            return
+          }
+          const from = target === null ? board.scrollLeft : target
+          target = Math.max(0, Math.min(max, from + step))
+          if (!frame) frame = requestAnimationFrame(glide)
+          return
+        }
+        if (axis !== "x") return
+        e.preventDefault()
+        stop()
+        board.scrollLeft += dx
+      },
+      { passive: false },
+    )
+  }
   document.addEventListener("nav", run)
   window.addEventListener("resize", fades)
   run()
@@ -809,7 +954,7 @@ BoardsDecor.css = `
 
 .bases-view-meta { display: none; }
 
-/* tables (CV-26): read from the right like the rest of the site; a quiet group bar; links as text */
+/* tables (CV-26): cells start-aligned; a quiet group bar; links as text */
 /* the plugin's overflow:hidden (for the rounded corners) breaks the sticky header row */
 .bases-view table.bases-table { overflow: visible; }
 .bases-view table.bases-table :is(th, td) { text-align: start; }
@@ -855,23 +1000,23 @@ BoardsDecor.css = `
 .boards-nowrap { white-space: nowrap; }
 
 /* task page and task popup: the note properties as a row of small tags instead of a boxed table */
-:is(.center, .boards-task-content, .preview-container) .note-properties { margin: 0.4rem 0 0.8rem; border: 0 !important; background: none !important; }
-:is(.center, .boards-task-content, .preview-container) .note-properties-header { display: none !important; }
-:is(.center, .boards-task-content, .preview-container) .note-properties-table,
-:is(.center, .boards-task-content, .preview-container) .note-properties-table tbody { display: flex; flex-wrap: wrap; gap: 0.4rem; width: auto; border: 0 !important; }
-:is(.center, .boards-task-content, .preview-container) .note-properties-row { display: inline-flex; border: 0; }
-:is(.center, .boards-task-content, .preview-container) .note-properties-row td { padding: 0; border: 0; }
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-value=""] { display: none; }
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="status"] { order: -2; }
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="priority"] { order: -1; }
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="status"] .note-properties-key,
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="priority"] .note-properties-key,
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="owner"] .note-properties-key,
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="effort"] .note-properties-key { display: none; }
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="status"] .note-properties-value,
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="priority"] .note-properties-value,
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="owner"] .note-properties-value,
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="effort"] .note-properties-value {
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties { margin: 0.4rem 0 0.8rem; border: 0 !important; background: none !important; }
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-header { display: none !important; }
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-table,
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-table tbody { display: flex; flex-wrap: wrap; gap: 0.4rem; width: auto; border: 0 !important; }
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row { display: inline-flex; border: 0; }
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row td { padding: 0; border: 0; }
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-value=""] { display: none; }
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="status"] { order: -2; }
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="priority"] { order: -1; }
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="status"] .note-properties-key,
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="priority"] .note-properties-key,
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="owner"] .note-properties-key,
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="effort"] .note-properties-key { display: none; }
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="status"] .note-properties-value,
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="priority"] .note-properties-value,
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="owner"] .note-properties-value,
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="effort"] .note-properties-value {
   padding: 0 0.65rem;
   border-radius: 999px;
   background: var(--lightgray);
@@ -879,15 +1024,15 @@ BoardsDecor.css = `
   font-size: 0.8rem;
   line-height: 1.7;
 }
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="status"][data-value="done"] .note-properties-value { background: #2e9d57; color: #fff; }
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="status"][data-value="sim-qa"] .note-properties-value { background: #3a9d8f; color: #fff; }
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="status"][data-value="qa"] .note-properties-value { background: var(--secondary); color: var(--light); }
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="priority"][data-value="highest"] .note-properties-value { background: #d64545; color: #fff; }
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="priority"][data-value="high"] .note-properties-value { background: #e8863a; color: #fff; }
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="status"][data-value="done"] .note-properties-value { background: #2e9d57; color: #fff; }
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="status"][data-value="sim-qa"] .note-properties-value { background: #3a9d8f; color: #fff; }
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="status"][data-value="qa"] .note-properties-value { background: var(--secondary); color: var(--light); }
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="priority"][data-value="highest"] .note-properties-value { background: #d64545; color: #fff; }
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="priority"][data-value="high"] .note-properties-value { background: #e8863a; color: #fff; }
 
 /* search: id and board under each result; no excerpt on a phone (2 results a screen); the previewed
    note keeps its title and tags on top while it scrolls to the match */
-.boards-hit-meta { display: flex; direction: rtl; gap: 0.6rem; margin-top: 0.3rem; color: var(--gray); font-size: 0.8rem; font-weight: 400; }
+.boards-hit-meta { display: flex; gap: 0.6rem; margin-top: 0.3rem; color: var(--gray); font-size: 0.8rem; font-weight: 400; }
 .boards-hit-id { direction: ltr; font-family: var(--codeFont); }
 @media (max-width: 800px) {
   .search .results-container .result-card > p { display: none !important; }
@@ -901,7 +1046,7 @@ BoardsDecor.css = `
   border-bottom: 1px solid var(--lightgray);
 }
 /* the owner tag says "claude" on nearly every task: show it only when it says something else */
-:is(.center, .boards-task-content, .preview-container) .note-properties-row[data-key="owner"][data-value="claude"] { display: none; }
+:is(.center, .boards-task-content, .preview-container, .popover-inner) .note-properties-row[data-key="owner"][data-value="claude"] { display: none; }
 
 /* task page */
 .boards-dup-title { display: none; }
@@ -952,12 +1097,21 @@ body[data-slug="index"] .center > hr { display: none; }
 .boards-home-meta { display: flex; flex-wrap: wrap; gap: 0.4rem; min-height: 1.5rem; }
 .boards-home-chip { padding: 0.1rem 0.6rem; border-radius: 999px; background: var(--lightgray); color: var(--gray); font-size: 0.8rem; }
 .boards-home-chip.is-on { background: var(--secondary); color: var(--light); }
-/* an English task item is LTR inside the RTL page: indent the item on its own start side so the
-   checkbox, which hangs before the text, stays on the page */
+/* a task item (English or Hebrew) is indented on its own start side, so the checkbox, which hangs
+   before the text, stays on the page */
 .page .center article ul.contains-task-list { padding-inline: 0; }
 .page .center article li:has(> input[type="checkbox"]) { padding-inline-start: 1.5rem; }
-/* same for a plain English bullet: its marker hangs on its own (left) side, where the RTL list has no room */
-:is(.center article, .boards-task-content, .preview-container) li:dir(ltr):not(:has(> input[type="checkbox"])) { margin-left: 1.4rem; }
+/* same for a plain Hebrew bullet (.boards-rtl, set by the script): its marker hangs on its own (right)
+   side, where the LTR list has no room */
+:is(.center article, .boards-task-content, .preview-container, .popover-inner) li.boards-rtl:not(:has(> input[type="checkbox"])) { margin-right: 1.4rem; }
+/* a Hebrew quote or header cell keeps its bar and alignment on its own start side */
+:is(.center article, .boards-task-content, .preview-container, .popover-inner) blockquote:not(.callout) {
+  border-left: 0;
+  padding-left: 0;
+  border-inline-start: 3px solid var(--secondary);
+  padding-inline-start: 1rem;
+}
+:is(.center article, .boards-task-content, .preview-container, .popover-inner) th { text-align: start; }
 .boards-back {
   display: inline-block;
   margin: 0 0 0.4rem;

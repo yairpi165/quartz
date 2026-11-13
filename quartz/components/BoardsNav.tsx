@@ -20,7 +20,7 @@ function BoardsNav({ fileData, allFiles, displayClass }: QuartzComponentProps) {
 
   return (
     <nav class={classNames(displayClass, "boards-nav")}>
-      <h3>לוחות</h3>
+      <h3>Boards</h3>
       <ul>
         {boards.map((b) => (
           <li>
