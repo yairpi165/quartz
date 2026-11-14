@@ -113,6 +113,8 @@ if (!window.__boardsQa) {
     const head = el("h4", "qa-task-title")
     rtlIf(head, task.title || "")
     head.appendChild(el("span", "qa-id", task.id))
+    // release tooling fills the version field on qa tasks: the app build to install for this check
+    if (task.version) head.appendChild(el("span", "qa-version", "build " + task.version))
     // the title opens the task popup (TaskPopup picks up links inside the list)
     if (task.file) {
       const a = el("a", "qa-title-link", " " + task.title)
@@ -376,6 +378,7 @@ QaButton.css = `
 .qa-card { border: 1px solid var(--lightgray); border-radius: 10px; padding: 0.9rem 1rem; margin: 0.75rem 0; }
 .qa-task-title { margin: 0 0 0.5rem; font-size: 1rem; }
 .qa-id { display: inline-block; padding: 0 0.4rem; border-radius: 4px; background: var(--highlight); color: var(--secondary); font-family: var(--codeFont); font-size: 0.85rem; direction: ltr; }
+.qa-version { display: inline-block; margin-inline-start: 0.35rem; padding: 0 0.4rem; border-radius: 4px; border: 1px solid var(--secondary); color: var(--secondary); font-family: var(--codeFont); font-size: 0.8rem; direction: ltr; }
 /* "What to check" said nothing the checks under it do not */
 .qa-label { display: none; }
 .qa-checks { margin: 0 0 0.7rem; padding: 0; list-style: none; counter-reset: qa-check; }
