@@ -15,8 +15,9 @@ export function kindOf(text: string): string {
   return text.trim().toLowerCase()
 }
 
-// The sim-qa column (CV-22): its header shows this label; the status stays "sim-qa" in data-status.
-export const SIM_QA_LABEL = "Sim QA"
+// The sim-qa column (CV-22), shown as "Release" since CV-30 (in the release branch, not yet released): its
+// header shows this label; the status value stays "sim-qa" in data-status and in the vault (Vela reads it).
+export const SIM_QA_LABEL = "Release"
 // What a status is called on the site (CV-26: column headers, table cells, task tags, popups). The vault
 // keeps the English keys; data-status / data-value keep them too.
 export const STATUS_LABELS: Record<string, string> = {
@@ -34,7 +35,7 @@ export const STATUS_LABELS: Record<string, string> = {
 // Self-contained (the labels are passed in) because the script embeds it with toString().
 export function columnStatus(text: string, labels: Record<string, string> = {}): string {
   const s = text.trim().toLowerCase()
-  if (s === "sim qa") return "sim-qa"
+  if (s === "sim qa" || s === "release") return "sim-qa"
   for (const k of Object.keys(labels)) if (labels[k].toLowerCase() === s) return k
   return s
 }
