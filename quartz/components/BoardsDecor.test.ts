@@ -10,6 +10,7 @@ import BoardsDecor, {
   STATUS_LABELS,
   isMouse,
   hiddenColumns,
+  boardFrontmatter,
 } from "./BoardsDecor"
 import { opensInPopup } from "./TaskPopup"
 
@@ -240,6 +241,15 @@ describe("empty status columns (CV-25)", () => {
     ])
     assert.deepStrictEqual(hiddenColumns({ hidden_columns: "in-review" }), [])
     assert.deepStrictEqual(hiddenColumns(undefined), [])
+  })
+  test("a .base page takes the frontmatter of its board note (CV-31)", () => {
+    const files = [{ slug: "p/t/v-board", frontmatter: { hidden_columns: ["in-review"] } }]
+    assert.deepStrictEqual(
+      boardFrontmatter("p/t/v-board.base", undefined, files),
+      files[0].frontmatter,
+    )
+    assert.strictEqual(boardFrontmatter("p/t/v-board", "own", files), "own")
+    assert.strictEqual(boardFrontmatter("p/t/x.base", "own", files), "own")
   })
   test("the embedded script carries the order", () => {
     assert.ok(Decor.afterDOMLoaded.includes(JSON.stringify(STATUS_ORDER)))

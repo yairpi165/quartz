@@ -121,8 +121,21 @@ export function hiddenColumns(fm: unknown): string[] {
     : []
 }
 
+// The board is opened either as the board note or as its `.base` page (the site index links the .base);
+// a .base page has no frontmatter, so it takes the one of the note with the same slug minus ".base".
+export function boardFrontmatter(
+  slug: string | undefined,
+  own: unknown,
+  files: { slug?: string; frontmatter?: unknown }[] = [],
+) {
+  if (!slug || !slug.endsWith(".base")) return own
+  const note = slug.slice(0, -".base".length)
+  return files.find((f) => f.slug === note)?.frontmatter ?? own
+}
+
 function BoardsDecor(props?: QuartzComponentProps) {
-  const hidden = hiddenColumns(props?.fileData?.frontmatter)
+  const fd = props?.fileData
+  const hidden = hiddenColumns(boardFrontmatter(fd?.slug, fd?.frontmatter, props?.allFiles))
   if (!hidden.length) return null
   return <div id="boards-config" hidden data-hidden-columns={hidden.join(",")} />
 }
