@@ -1,4 +1,4 @@
-import { QuartzComponentConstructor } from "./types"
+import { QuartzComponentConstructor, QuartzComponentProps } from "./types"
 
 // Presentation tweaks for the boards that the generated HTML cannot express (the board/table markup comes
 // from the bases-page plugin, the notes from the vault). It renders nothing; its script tags the DOM with
@@ -42,22 +42,35 @@ export function columnStatus(text: string, labels: Record<string, string> = {}):
 // Every status column a board always shows, in board order (the bases formula `status_order`; CV-25).
 // bases-page only builds a column for a status that has tasks, so the script adds empty ones for the rest
 // and the columns never jump around or change width.
-export const STATUS_ORDER = ["backlog", "todo", "in-progress", "in-review", "sim-qa", "qa", "reopened", "done"]
+export const STATUS_ORDER = [
+  "backlog",
+  "todo",
+  "in-progress",
+  "in-review",
+  "sim-qa",
+  "qa",
+  "reopened",
+  "done",
+]
 // For each missing status: the present status it goes in front of (null = at the end). Empty when the
 // board is not a status board (a column that is not a known status).
 // Self-contained (the order is passed in) because the script embeds it with toString().
 export function missingColumns(
   present: string[],
   order: string[],
+  hidden: string[] = [],
 ): { status: string; before: string | null }[] {
   if (!present.length || present.some((s) => !order.includes(s))) return []
-  return order.filter((s) => !present.includes(s)).map((status) => {
-    const i = order.indexOf(status)
-    const next = present
-      .filter((p) => order.indexOf(p) > i)
-      .sort((a, b) => order.indexOf(a) - order.indexOf(b))[0]
-    return { status, before: next ?? null }
-  })
+  // hidden = statuses this project does not use (CV-31): no empty column; a hidden one holding tasks is present, so it stays
+  return order
+    .filter((s) => !present.includes(s) && !hidden.includes(s))
+    .map((status) => {
+      const i = order.indexOf(status)
+      const next = present
+        .filter((p) => order.indexOf(p) > i)
+        .sort((a, b) => order.indexOf(a) - order.indexOf(b))[0]
+      return { status, before: next ?? null }
+    })
 }
 // The count line on a sim-qa card: what is left for the simulator and for Yair's device.
 export function simBadge(sim: number, device: number): string {
@@ -99,8 +112,19 @@ export function isMouse(e: {
   return (!dx || !dy) && Number.isInteger(d) && Math.abs(d) >= 40
 }
 
-function BoardsDecor() {
-  return null
+// hidden_columns in the board note's frontmatter (CV-31): statuses this project does not use. The component
+// hands the list to the script through a hidden element; only a real list of strings counts.
+export function hiddenColumns(fm: unknown): string[] {
+  const v = (fm as { hidden_columns?: unknown } | undefined)?.hidden_columns
+  return Array.isArray(v)
+    ? v.filter((x): x is string => typeof x === "string" && STATUS_ORDER.includes(x))
+    : []
+}
+
+function BoardsDecor(props?: QuartzComponentProps) {
+  const hidden = hiddenColumns(props?.fileData?.frontmatter)
+  if (!hidden.length) return null
+  return <div id="boards-config" hidden data-hidden-columns={hidden.join(",")} />
 }
 
 BoardsDecor.afterDOMLoaded = `
@@ -151,7 +175,9 @@ if (!window.__boardsDecor) {
         const n = c.querySelector(".bases-board-column-header span")
         if (n) byStatus[${columnStatus.toString()}(n.textContent, LABELS)] = c
       })
-      ;(${missingColumns.toString()})(Object.keys(byStatus), ${JSON.stringify(STATUS_ORDER)}).forEach(({ status, before }) => {
+      const cfg = document.querySelectorAll("#boards-config")[0]
+      const hidden = cfg && cfg.dataset.hiddenColumns ? cfg.dataset.hiddenColumns.split(",") : []
+      ;(${missingColumns.toString()})(Object.keys(byStatus), ${JSON.stringify(STATUS_ORDER)}, hidden).forEach(({ status, before }) => {
         const col = document.createElement("div")
         col.className = "bases-board-column boards-empty-column"
         const head = document.createElement("div")

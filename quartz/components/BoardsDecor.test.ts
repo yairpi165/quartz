@@ -9,6 +9,7 @@ import BoardsDecor, {
   missingColumns,
   STATUS_LABELS,
   isMouse,
+  hiddenColumns,
 } from "./BoardsDecor"
 import { opensInPopup } from "./TaskPopup"
 
@@ -218,6 +219,27 @@ describe("empty status columns (CV-25)", () => {
   test("a board grouped by something else is left alone", () => {
     assert.deepStrictEqual(missingColumns(["backlog", "VELA-12 Epic"], STATUS_ORDER), [])
     assert.deepStrictEqual(missingColumns([], STATUS_ORDER), [])
+  })
+  test("a hidden status gets no empty column, but stays when it holds tasks (CV-31)", () => {
+    const present = ["backlog", "todo", "in-progress", "sim-qa", "qa", "reopened", "done"]
+    assert.deepStrictEqual(missingColumns(present, STATUS_ORDER, ["in-review"]), [])
+    assert.deepStrictEqual(
+      missingColumns([...present, "in-review"], STATUS_ORDER, ["in-review"]),
+      [],
+    )
+    assert.deepStrictEqual(
+      missingColumns(["backlog", "qa", "done"], STATUS_ORDER, ["in-review", "sim-qa"]).map(
+        (m) => m.status,
+      ),
+      ["todo", "in-progress", "reopened"],
+    )
+  })
+  test("hiddenColumns reads a list of known statuses only", () => {
+    assert.deepStrictEqual(hiddenColumns({ hidden_columns: ["in-review", "nope", 3] }), [
+      "in-review",
+    ])
+    assert.deepStrictEqual(hiddenColumns({ hidden_columns: "in-review" }), [])
+    assert.deepStrictEqual(hiddenColumns(undefined), [])
   })
   test("the embedded script carries the order", () => {
     assert.ok(Decor.afterDOMLoaded.includes(JSON.stringify(STATUS_ORDER)))
